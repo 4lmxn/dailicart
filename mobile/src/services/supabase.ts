@@ -1,7 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 import { config } from '../config';
+import { supabaseSecureStorage } from '../utils/secureStorage';
 
-// Initialize Supabase client
+// Initialize Supabase client with secure storage
 export const supabase = createClient(
   config.supabase.url,
   config.supabase.anonKey,
@@ -9,8 +10,9 @@ export const supabase = createClient(
     auth: {
       autoRefreshToken: true,
       persistSession: true,
-      // Required for web OAuth callback so the client
-      // can parse tokens from the redirected URL.
+      // Use secure storage for auth tokens (encrypted on iOS/Android)
+      storage: supabaseSecureStorage,
+      // Required for web OAuth callback
       detectSessionInUrl: typeof window !== 'undefined',
     },
   }
