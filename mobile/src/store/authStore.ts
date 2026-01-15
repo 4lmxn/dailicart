@@ -6,6 +6,35 @@ import { AuthService, AuthUser } from '../services/auth/authService';
 import { supabase } from '../services/supabase';
 import { CustomerService } from '../services/api/customer';
 
+// Helper to map AuthUser/SupabaseUser to our User type - eliminates duplication
+function mapToUser(source: AuthUser | { id: string; email?: string | null; phone?: string | null; user_metadata?: any }): User {
+  const isAuthUser = 'role' in source;
+  return {
+    id: source.id,
+    name: isAuthUser 
+      ? (source as AuthUser).name 
+      : (source.user_metadata?.full_name || source.user_metadata?.name || source.email || 'User'),
+    email: source.email || '',
+    phone: source.phone || '',
+    role: isAuthUser ? (source as AuthUser).role : 'customer',
+    isActive: true,
+    isDeleted: false,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+// Helper to create AuthUser from Supabase user
+function mapToAuthUser(sbUser: { id: string; email?: string | null; phone?: string | null; user_metadata?: any }): AuthUser {
+  return {
+    id: sbUser.id,
+    email: sbUser.email || '',
+    name: sbUser.user_metadata?.full_name || sbUser.user_metadata?.name || sbUser.email || 'User',
+    phone: sbUser.phone || '',
+    role: 'customer',
+  };
+}
+
 interface AuthState {
   user: User | null;
   accessToken: string | null;
@@ -96,22 +125,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         throw new Error(`Account is temporarily locked until ${lockTime}. Please try again later.`);
       }
 
-      // Map AuthUser to User type
-      const user: User = {
-        id: authUser.id,
-        name: authUser.name,
-        email: authUser.email,
-        phone: authUser.phone,
-        role: authUser.role,
-        isActive: true,
-        isDeleted: false,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-
-      // Update state
       set({
-        user,
+        user: mapToUser(authUser),
         accessToken: session.access_token,
         isAuthenticated: true,
         isLoading: false,
@@ -184,113 +199,53 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       set({ isLoading: true, initializing: true });
 
-      // Check if we have a valid session
       const session = await AuthService.getSession();
-      let user = await AuthService.getCurrentUser();
+      
+      if (!session) {
+        set({ isLoading: false, initializing: false });
+        return;
+      }
 
-      if (session && user) {
-        // Map AuthUser to User type
-        const mappedUser: User = {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          phone: user.phone,
-          role: user.role,
-          isActive: true,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
+      // Try to get user from storage first, then from Supabase
+      let authUser = await AuthService.getCurrentUser();
+      
+      if (!authUser) {
+        const { data: userRes } = await supabase.auth.getUser();
+        if (userRes?.user) {
+          authUser = mapToAuthUser(userRes.user);
+          await AsyncStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(authUser));
+        }
+      }
 
+      if (authUser) {
         set({
-          user: mappedUser,
+          user: mapToUser(authUser),
           accessToken: session.access_token,
           isAuthenticated: true,
           isLoading: false,
           initializing: false,
         });
-
-        // Listener is attached below at store init; no-op here
       } else {
-        // If session exists but user not in storage (e.g., web OAuth), hydrate from Supabase
-        if (session && !user) {
-          const { data: userRes } = await supabase.auth.getUser();
-          const sbUser = userRes?.user;
-          if (sbUser) {
-            const authUser: AuthUser = {
-              id: sbUser.id,
-              email: sbUser.email || '',
-              name: (sbUser.user_metadata?.full_name || sbUser.user_metadata?.name || sbUser.email || 'User'),
-              phone: sbUser.phone || '',
-              role: 'customer',
-            };
+        set({ isLoading: false, initializing: false });
+      }
 
-            await AsyncStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(authUser));
-
-            const mappedUser: User = {
-              id: authUser.id,
-              name: authUser.name,
-              email: authUser.email,
-              phone: authUser.phone,
-              role: authUser.role,
-              isActive: true,
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-            };
-
-            set({
-              user: mappedUser,
-              accessToken: session.access_token,
-              isAuthenticated: true,
-              isLoading: false,
-              initializing: false,
-            });
-          } else {
-            set({ isLoading: false, initializing: false });
-          }
-        } else {
-          set({ isLoading: false, initializing: false });
-        }
-      // Attach a global auth state listener so SIGNED_IN/SIGNED_OUT always update state
-      ;
-
+      // Attach auth state listener
       supabase.auth.onAuthStateChange(async (event, currentSession) => {
-        const store = useAuthStore.getState();
         if (event === 'SIGNED_IN' && currentSession) {
-          const sbUser = currentSession.user;
-          const authUser: AuthUser = {
-            id: sbUser.id,
-            email: sbUser.email || '',
-            name: (sbUser.user_metadata?.full_name || sbUser.user_metadata?.name || sbUser.email || 'User'),
-            phone: sbUser.phone || '',
-            role: 'customer',
-          };
-          const mappedUser: User = {
-            id: authUser.id,
-            name: authUser.name,
-            email: authUser.email,
-            phone: authUser.phone,
-            role: authUser.role,
-            isActive: true,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          };
+          const authUser = mapToAuthUser(currentSession.user);
           await AsyncStorage.multiSet([
             [STORAGE_KEYS.AUTH_TOKEN, currentSession.access_token],
             [STORAGE_KEYS.REFRESH_TOKEN, currentSession.refresh_token || ''],
             [STORAGE_KEYS.USER_DATA, JSON.stringify(authUser)],
           ]);
           useAuthStore.setState({
-            user: mappedUser,
+            user: mapToUser(authUser),
             accessToken: currentSession.access_token,
             isAuthenticated: true,
             isLoading: false,
           });
-          // Ensure user records exist in background (customers row)
-          try {
-            await CustomerService.ensureUserRecords(sbUser.id);
-          } catch (e) {
-            console.warn('ensureUserRecords failed', e);
-          }
+          // Ensure customer record exists
+          CustomerService.ensureUserRecords(currentSession.user.id).catch(() => {});
         } else if (event === 'TOKEN_REFRESHED' && currentSession) {
           await AsyncStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, currentSession.access_token);
           useAuthStore.setState({ accessToken: currentSession.access_token });
@@ -309,7 +264,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           });
         }
       });
-      }
     } catch (error) {
       console.error('[loadUserFromStorage Error]', error);
       set({ isLoading: false, initializing: false });

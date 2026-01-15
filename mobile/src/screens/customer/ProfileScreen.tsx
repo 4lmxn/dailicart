@@ -230,8 +230,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack }) => {
       return;
     }
     try {
-      // Note: We're only allowing add, not edit with this new UI
-      const created = await supabase
+      // Insert address first
+      const { data: insertedAddr, error: insertError } = await supabase
         .from('addresses')
         .insert({
           user_id: customerId,
@@ -240,26 +240,24 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack }) => {
           unit_id: addressForm.unitId,
           is_default: addresses.length === 0,
         })
-        .select(`
-          id,
-          is_default,
-          societies(name),
-          towers(name),
-          units(number)
-        `)
+        .select('id, is_default')
         .single();
       
-      if (created.error) throw created.error;
+      if (insertError) throw insertError;
+
+      // Get the related names separately for clarity
+      const selectedSociety = societies.find(s => s.id === addressForm.societyId);
+      const selectedTower = towers.find(t => t.id === addressForm.towerId);
+      const selectedUnit = units.find(u => u.id === addressForm.unitId);
       
-      const newAddr = created.data;
       setAddresses(prev => [...prev, {
-        id: newAddr.id,
-        label: newAddr.is_default ? 'Default' : 'Address',
-        flatNo: (newAddr.units as any)?.number || (Array.isArray(newAddr.units) ? newAddr.units[0]?.number : '') || '',
-        society: (newAddr.societies as any)?.name || (Array.isArray(newAddr.societies) ? newAddr.societies[0]?.name : '') || '',
-        street: `Tower ${(newAddr.towers as any)?.name || (Array.isArray(newAddr.towers) ? newAddr.towers[0]?.name : '') || ''}`,
+        id: insertedAddr.id,
+        label: insertedAddr.is_default ? 'Default' : 'Address',
+        flatNo: selectedUnit?.number || '',
+        society: selectedSociety?.name || '',
+        street: `Tower ${selectedTower?.name || ''}`,
         pincode: '',
-        isDefault: newAddr.is_default || false,
+        isDefault: insertedAddr.is_default || false,
       }]);
       setShowAddressModal(false);
       Alert.alert('Success', 'Address added!');

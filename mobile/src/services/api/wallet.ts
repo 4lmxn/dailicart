@@ -44,32 +44,30 @@ export class WalletService {
   }
 
   /**
-   * Get customer wallet balance using the secure RPC function
+   * Get customer wallet balance - simple direct query
    */
   static async getBalance(userId: string): Promise<number> {
     const validationError = this.validateUserId(userId);
-    if (validationError) {
-      console.error('Invalid userId:', validationError);
-      return 0;
-    }
+    if (validationError) return 0;
 
     try {
       const { data, error } = await supabase
-        .rpc('get_wallet_balance', { p_user_id: userId });
+        .from('customers')
+        .select('wallet_balance')
+        .eq('user_id', userId)
+        .maybeSingle();
 
       if (error) {
-        console.error('Error fetching wallet balance via RPC:', error);
-        // Fallback to direct query
-        return this.getBalanceFallback(userId);
+        console.error('Error fetching wallet balance:', error);
+        return 0;
       }
 
-      if (data && data.length > 0) {
-        return data[0].available_balance || 0;
+      if (!data) {
+        await this.ensureCustomerExists(userId);
+        return 0;
       }
 
-      // No customer record found, create one
-      await this.ensureCustomerExists(userId);
-      return 0;
+      return data.wallet_balance || 0;
     } catch (error) {
       console.error('Error fetching wallet balance:', error);
       return 0;
@@ -82,78 +80,38 @@ export class WalletService {
   static async getDetailedBalance(userId: string): Promise<WalletBalance> {
     const validationError = this.validateUserId(userId);
     if (validationError) {
-      console.error('Invalid userId:', validationError);
-      return {
-        availableBalance: 0,
-        heldAmount: 0,
-        totalBalance: 0,
-        isLocked: false,
-      };
+      return { availableBalance: 0, heldAmount: 0, totalBalance: 0, isLocked: false };
     }
 
     try {
       const { data, error } = await supabase
-        .rpc('get_wallet_balance', { p_user_id: userId });
+        .from('customers')
+        .select('wallet_balance, held_amount, is_locked')
+        .eq('user_id', userId)
+        .maybeSingle();
 
       if (error) {
         console.error('Error fetching detailed balance:', error);
-        const fallbackBalance = await this.getBalanceFallback(userId);
-        return {
-          availableBalance: fallbackBalance,
-          heldAmount: 0,
-          totalBalance: fallbackBalance,
-          isLocked: false,
-        };
+        return { availableBalance: 0, heldAmount: 0, totalBalance: 0, isLocked: false };
       }
 
-      if (data && data.length > 0) {
-        return {
-          availableBalance: data[0].available_balance || 0,
-          heldAmount: data[0].held_amount || 0,
-          totalBalance: data[0].total_balance || 0,
-          isLocked: data[0].is_locked || false,
-        };
+      if (!data) {
+        await this.ensureCustomerExists(userId);
+        return { availableBalance: 0, heldAmount: 0, totalBalance: 0, isLocked: false };
       }
 
-      await this.ensureCustomerExists(userId);
+      const balance = data.wallet_balance || 0;
+      const held = data.held_amount || 0;
       return {
-        availableBalance: 0,
-        heldAmount: 0,
-        totalBalance: 0,
-        isLocked: false,
+        availableBalance: balance - held,
+        heldAmount: held,
+        totalBalance: balance,
+        isLocked: data.is_locked || false,
       };
     } catch (error) {
       console.error('Error fetching detailed balance:', error);
-      return {
-        availableBalance: 0,
-        heldAmount: 0,
-        totalBalance: 0,
-        isLocked: false,
-      };
+      return { availableBalance: 0, heldAmount: 0, totalBalance: 0, isLocked: false };
     }
-  }
-
-  /**
-   * Fallback direct query for balance
-   */
-  private static async getBalanceFallback(userId: string): Promise<number> {
-    const { data, error } = await supabase
-      .from('customers')
-      .select('wallet_balance')
-      .eq('user_id', userId)
-      .maybeSingle();
-
-    if (error) {
-      console.error('Fallback balance query error:', error);
-      return 0;
-    }
-
-    if (!data) {
-      await this.ensureCustomerExists(userId);
-      return 0;
-    }
-
-    return data.wallet_balance || 0;
   }
 
   /**

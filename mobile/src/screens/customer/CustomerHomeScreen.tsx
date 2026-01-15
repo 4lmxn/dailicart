@@ -23,6 +23,23 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_PADDING = 20;
 const CARD_MARGIN = 16;
 
+// Delivery status helper to avoid nested ternaries
+type DeliveryStatus = 'missed' | 'pending' | 'skipped' | 'delivered';
+
+function getDeliveryStatus(missed: number, pending: number, skipped: number, delivered: number): DeliveryStatus {
+  if (missed > 0) return 'missed';
+  if (pending > 0) return 'pending';
+  if (skipped > 0 && delivered === 0) return 'skipped';
+  return 'delivered';
+}
+
+const DELIVERY_STATUS_CONFIG = {
+  missed: { icon: '❌', title: 'Delivery Issue!', style: 'Missed' },
+  pending: { icon: '🚚', title: "Today's Deliveries", style: 'Pending' },
+  skipped: { icon: '⏭️', title: 'Delivery Skipped', style: 'Skipped' },
+  delivered: { icon: '✅', title: 'Delivered Successfully!', style: 'Delivered' },
+} as const;
+
 interface CustomerHomeScreenProps {
   onNavigateToProducts?: () => void;
   onNavigateToWallet?: () => void;
@@ -226,53 +243,48 @@ export const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = ({
         </TouchableOpacity>
 
         {/* Today's Deliveries Card - Shows different states */}
-        {(todayPending > 0 || todayDelivered > 0 || todayMissed > 0 || todaySkipped > 0) && (
-          <TouchableOpacity 
-            style={[
-              styles.todayCard,
-              todayPending === 0 && todayDelivered > 0 && todayMissed === 0 && styles.todayCardDelivered,
-              todayMissed > 0 && styles.todayCardMissed,
-              todaySkipped > 0 && todayPending === 0 && todayMissed === 0 && todayDelivered === 0 && styles.todayCardSkipped,
-            ]}
-            onPress={onNavigateToCalendar}
-            activeOpacity={0.7}
-          >
-            <View style={styles.todayLeft}>
-              <View style={[
-                styles.todayIconContainer,
-                todayPending === 0 && todayDelivered > 0 && todayMissed === 0 && styles.todayIconContainerDelivered,
-                todayMissed > 0 && styles.todayIconContainerMissed,
-              ]}>
-                <Text style={styles.todayIconText}>
-                  {todayMissed > 0 ? '❌' : todayPending > 0 ? '🚚' : todaySkipped > 0 ? '⏭️' : '✅'}
-                </Text>
-                {todayPending > 0 && <View style={styles.todayPulse} />}
-              </View>
-              <View style={styles.todayContent}>
-                <Text style={[
-                  styles.todayTitle,
-                  todayPending === 0 && todayDelivered > 0 && todayMissed === 0 && styles.todayTitleDelivered,
-                  todayMissed > 0 && styles.todayTitleMissed,
+        {(todayPending > 0 || todayDelivered > 0 || todayMissed > 0 || todaySkipped > 0) && (() => {
+          const status = getDeliveryStatus(todayMissed, todayPending, todaySkipped, todayDelivered);
+          const config = DELIVERY_STATUS_CONFIG[status];
+          
+          return (
+            <TouchableOpacity 
+              style={[
+                styles.todayCard,
+                status === 'delivered' && styles.todayCardDelivered,
+                status === 'missed' && styles.todayCardMissed,
+                status === 'skipped' && styles.todayCardSkipped,
+              ]}
+              onPress={onNavigateToCalendar}
+              activeOpacity={0.7}
+            >
+              <View style={styles.todayLeft}>
+                <View style={[
+                  styles.todayIconContainer,
+                  status === 'delivered' && styles.todayIconContainerDelivered,
+                  status === 'missed' && styles.todayIconContainerMissed,
                 ]}>
-                  {todayMissed > 0 
-                    ? 'Delivery Issue!' 
-                    : todayPending > 0 
-                      ? "Today's Deliveries" 
-                      : todaySkipped > 0 && todayDelivered === 0 
-                        ? 'Delivery Skipped' 
-                        : 'Delivered Successfully!'
-                  }
-                </Text>
+                  <Text style={styles.todayIconText}>{config.icon}</Text>
+                  {status === 'pending' && <View style={styles.todayPulse} />}
+                </View>
+                <View style={styles.todayContent}>
+                  <Text style={[
+                    styles.todayTitle,
+                    status === 'delivered' && styles.todayTitleDelivered,
+                    status === 'missed' && styles.todayTitleMissed,
+                  ]}>
+                    {config.title}
+                  </Text>
                 <Text style={[
                   styles.todayCount,
-                  todayPending === 0 && todayDelivered > 0 && todayMissed === 0 && styles.todayCountDelivered,
-                  todayMissed > 0 && styles.todayCountMissed,
+                  status === 'delivered' && styles.todayCountDelivered,
+                  status === 'missed' && styles.todayCountMissed,
                 ]}>
-                  {todayMissed > 0 
+                  {status === 'missed' 
                     ? `${todayMissed} item${todayMissed !== 1 ? 's' : ''} not delivered • Contact support`
-                    : todayPending > 0 
+                    : status === 'pending' 
                       ? `${todayPending} item${todayPending !== 1 ? 's' : ''} • On the way`
-                      : todaySkipped > 0 && todayDelivered === 0
+                      : status === 'skipped'
                         ? `${todaySkipped} item${todaySkipped !== 1 ? 's' : ''} • Paused by you`
                         : `${todayDelivered} item${todayDelivered !== 1 ? 's' : ''} • Enjoy your fresh products!`
                   }
@@ -282,12 +294,13 @@ export const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = ({
             <View style={styles.todayChevron}>
               <Text style={[
                 styles.todayChevronText,
-                todayPending === 0 && todayDelivered > 0 && todayMissed === 0 && styles.todayChevronDelivered,
-                todayMissed > 0 && styles.todayChevronMissed,
+                status === 'delivered' && styles.todayChevronDelivered,
+                status === 'missed' && styles.todayChevronMissed,
               ]}>→</Text>
             </View>
           </TouchableOpacity>
-        )}
+          );
+        })()}
 
         {/* Quick Actions */}
         <View style={styles.section}>
