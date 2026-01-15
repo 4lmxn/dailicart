@@ -10,7 +10,7 @@ import { ErrorBanner } from '../../components/ErrorBanner';
 import { formatCurrency } from '../../utils/helpers';
 import { getAuthUserId } from '../../utils/auth';
 import { supabase } from '../../services/supabase';
-import * as EarningsAPI from '../../services/api/earnings';
+import * as DistributorAPI from '../../services/api/distributors';
 import type { DistributorScreenProps } from '../../navigation/types';
 
 interface SalarySlip {
@@ -59,7 +59,7 @@ export const SalarySlipsScreen = ({ navigation }: DistributorScreenProps<'Salary
       return;
     }
 
-    const { data, error: err } = await EarningsAPI.getSalarySlips(distributor.id);
+    const { data, error: err } = await DistributorAPI.getSalarySlips(distributor.id);
     setLoading(false);
     setRefreshing(false);
     if (err) {

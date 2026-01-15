@@ -16,7 +16,7 @@ import { AppLayout } from '../../components/AppLayout';
 import { AppBar } from '../../components/AppBar';
 import type { AdminScreenProps } from '../../navigation/types';
 import { formatCurrency, formatQuantity } from '../../utils/helpers';
-import { CustomerService } from '../../services/api/customers';
+import { CustomerAdminService } from '../../services/api/customers';
 import { WalletService } from '../../services/api/wallet';
 import { SubscriptionService } from '../../services/api/subscriptions';
 
@@ -58,7 +58,7 @@ export const CustomerDetailScreen: React.FC<AdminScreenProps<'CustomerDetail'>> 
         return;
       }
       const [customerData, subsData, txnData] = await Promise.all([
-        CustomerService.getCustomerById(customerId!),
+        CustomerAdminService.getCustomerById(customerId!),
         SubscriptionService.getCustomerSubscriptions(customerId!),
         WalletService.getTransactions(customerId!, 20),
       ]);
@@ -103,7 +103,7 @@ export const CustomerDetailScreen: React.FC<AdminScreenProps<'CustomerDetail'>> 
       const amount = parseFloat(walletAmount);
       const adjustAmount = walletAction === 'add' ? amount : -amount;
 
-      await CustomerService.adjustWallet(customerId!, adjustAmount, walletReason);
+      await CustomerAdminService.adjustWallet(customerId!, adjustAmount, walletReason);
       
       Alert.alert('Success', `Wallet ${walletAction === 'add' ? 'credited' : 'debited'} successfully`);
       setShowWalletModal(false);
@@ -122,7 +122,7 @@ export const CustomerDetailScreen: React.FC<AdminScreenProps<'CustomerDetail'>> 
         Alert.alert('Error', 'No customer ID provided');
         return;
       }
-      await CustomerService.updateCustomer(customerId!, editForm);
+      await CustomerAdminService.updateCustomer(customerId!, editForm);
       Alert.alert('Success', 'Customer profile updated successfully');
       setShowEditModal(false);
       loadCustomerData();
@@ -143,7 +143,7 @@ export const CustomerDetailScreen: React.FC<AdminScreenProps<'CustomerDetail'>> 
           style: 'destructive',
           onPress: async () => {
             try {
-              await CustomerService.blockCustomer(customerId!);
+              await CustomerAdminService.blockCustomer(customerId!);
               Alert.alert('✅ Success', 'Customer has been blocked');
               loadCustomerData();
             } catch (error) {
@@ -166,7 +166,7 @@ export const CustomerDetailScreen: React.FC<AdminScreenProps<'CustomerDetail'>> 
           text: 'Unblock',
           onPress: async () => {
             try {
-              await CustomerService.unblockCustomer(customerId!);
+              await CustomerAdminService.unblockCustomer(customerId!);
               Alert.alert('✅ Success', 'Customer has been unblocked');
               loadCustomerData();
             } catch (error) {

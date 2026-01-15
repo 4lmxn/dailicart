@@ -13,7 +13,7 @@ import type { DistributorScreenProps } from '../../navigation/types';
 import { Skeleton } from '../../components/Skeleton';
 import { getAuthUserId } from '../../utils/auth';
 import { supabase } from '../../services/supabase';
-import * as EarningsAPI from '../../services/api/earnings';
+import * as DistributorAPI from '../../services/api/distributors';
 
 const { width } = Dimensions.get('window');
 
@@ -77,7 +77,7 @@ export const EarningsScreen = ({ navigation }: DistributorScreenProps<'Earnings'
     }
 
     try {
-      const { data, error: err } = await EarningsAPI.getEarnings(distributor.id, start, today);
+      const { data, error: err } = await DistributorAPI.getEarnings(distributor.id, start, today);
       
       if (err) {
         setError(err.message || 'Failed to load earnings');

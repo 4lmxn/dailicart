@@ -18,7 +18,7 @@ import { SkeletonProductGrid } from '../../components/Skeleton';
 import { EmptyState } from '../../components/EmptyState';
 import { ErrorBanner } from '../../components/ErrorBanner';
 import { useToast } from '../../components/Toast';
-import { cdn } from '../../utils/cdn';
+import { cdn } from '../../utils/helpers';
 
 // NOTE: All mock products removed. If API call fails we now show EmptyState only.
 

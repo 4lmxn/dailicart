@@ -1,6 +1,6 @@
-import React from 'react';
-import { View, StyleSheet, ViewProps, Text, Pressable } from 'react-native';
-import { theme } from '../theme';
+import React, { useCallback, useRef } from 'react';
+import { View, StyleSheet, ViewProps, Text, Pressable, Animated, PressableProps, ViewStyle, StyleProp, GestureResponderEvent, TextStyle } from 'react-native';
+import { theme, colors } from '../theme';
 
 // Badge
 interface BadgeProps {
@@ -222,4 +222,81 @@ const quickActionStyles = StyleSheet.create({
   label: { fontSize: 12, fontWeight: '600', color: theme.colors.text, textAlign: 'center' },
 });
 
-export default undefined as unknown as never; // avoid default export collisions
+// ============================================================================
+// StatusBadge - Enhanced badge with preset variants
+// ============================================================================
+
+export type StatusBadgeVariant = 'success' | 'warning' | 'error' | 'info' | 'neutral' | 'primary';
+export type StatusBadgeSize = 'sm' | 'md' | 'lg';
+
+interface StatusBadgeProps {
+  label: string;
+  variant?: StatusBadgeVariant;
+  size?: StatusBadgeSize;
+  icon?: string;
+  filled?: boolean;
+  style?: ViewStyle;
+  textStyle?: TextStyle;
+}
+
+const statusVariantColors: Record<StatusBadgeVariant, { bg: string; bgFilled: string; text: string }> = {
+  success: { bg: `${colors.success}20`, bgFilled: colors.success, text: colors.success },
+  warning: { bg: `${colors.warning}30`, bgFilled: colors.warning, text: '#B45309' },
+  error: { bg: `${colors.error}20`, bgFilled: colors.error, text: colors.error },
+  info: { bg: `${colors.info}20`, bgFilled: colors.info, text: colors.info },
+  neutral: { bg: colors.gray[200], bgFilled: colors.gray[500], text: colors.gray[700] },
+  primary: { bg: `${colors.primary}20`, bgFilled: colors.primary, text: colors.primary },
+};
+
+const statusSizeStyles: Record<StatusBadgeSize, { paddingH: number; paddingV: number; fontSize: number }> = {
+  sm: { paddingH: 8, paddingV: 4, fontSize: 10 },
+  md: { paddingH: 12, paddingV: 6, fontSize: 12 },
+  lg: { paddingH: 14, paddingV: 8, fontSize: 14 },
+};
+
+export const StatusBadge: React.FC<StatusBadgeProps> = ({ label, variant = 'neutral', size = 'md', icon, filled = false, style, textStyle }) => {
+  const variantStyle = statusVariantColors[variant];
+  const sizeStyle = statusSizeStyles[size];
+  return (
+    <View style={[statusBadgeStyles.badge, { backgroundColor: filled ? variantStyle.bgFilled : variantStyle.bg, paddingHorizontal: sizeStyle.paddingH, paddingVertical: sizeStyle.paddingV }, style]}>
+      {icon && <Text style={{ fontSize: sizeStyle.fontSize, marginRight: 4 }}>{icon}</Text>}
+      <Text style={[statusBadgeStyles.text, { color: filled ? '#FFFFFF' : variantStyle.text, fontSize: sizeStyle.fontSize }, textStyle]}>{label}</Text>
+    </View>
+  );
+};
+
+const statusBadgeStyles = StyleSheet.create({
+  badge: { flexDirection: 'row', alignItems: 'center', borderRadius: 16, alignSelf: 'flex-start' },
+  text: { fontWeight: '600' },
+});
+
+// ============================================================================
+// PressableScale - Animated press feedback
+// ============================================================================
+
+interface PressableScaleProps extends Omit<PressableProps, 'style'> {
+  scaleTo?: number;
+  duration?: number;
+  style?: StyleProp<ViewStyle>;
+  children: React.ReactNode;
+}
+
+export const PressableScale: React.FC<PressableScaleProps> = ({ scaleTo = 0.97, style, children, onPressIn, onPressOut, disabled, ...props }) => {
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const handlePressIn = useCallback((event: GestureResponderEvent) => {
+    Animated.spring(scaleAnim, { toValue: scaleTo, useNativeDriver: true, speed: 50, bounciness: 4 }).start();
+    onPressIn?.(event);
+  }, [scaleTo, onPressIn]);
+  const handlePressOut = useCallback((event: GestureResponderEvent) => {
+    Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, speed: 50, bounciness: 4 }).start();
+    onPressOut?.(event);
+  }, [onPressOut]);
+  return (
+    <Pressable onPressIn={handlePressIn} onPressOut={handlePressOut} disabled={disabled} {...props}>
+      <Animated.View style={[style, { transform: [{ scale: scaleAnim }], opacity: disabled ? 0.5 : 1 }]}>{children}</Animated.View>
+    </Pressable>
+  );
+};
+
+export const PressableCard: React.FC<PressableScaleProps> = (props) => <PressableScale scaleTo={0.98} {...props} />;
+export const PressableButton: React.FC<PressableScaleProps> = (props) => <PressableScale scaleTo={0.95} {...props} />;

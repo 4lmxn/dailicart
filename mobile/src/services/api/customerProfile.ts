@@ -1,6 +1,10 @@
-import { supabase } from '../../services/supabase';
+import { supabase } from '../supabase';
 
-export const CustomerService = {
+/**
+ * Customer profile operations (used by customer themselves)
+ * For admin customer management, see customers.ts
+ */
+export const CustomerProfileService = {
   /**
    * Update or create a customer's address
    * Uses the addresses table with proper society/tower/unit references

@@ -24,7 +24,7 @@ import { AppBar } from '../../components/AppBar';
 import { formatCurrency } from '../../utils/helpers';
 import { ProductService } from '../../services/api/products';
 import { useAnalyticsStore } from '../../store/analyticsStore';
-import { CustomerService } from '../../services/api/customers';
+import { CustomerAdminService } from '../../services/api/customers';
 import { AdminService } from '../../services/api/admin';
 import { supabase } from '../../services/supabase';
 import { useAdminDashboardStore } from '../../store/adminDashboardStore';
@@ -237,7 +237,7 @@ export const AdminDashboardScreen: React.FC = () => {
       } else {
         setLoadingMore(true);
       }
-      const { rows, total } = await CustomerService.getCustomersPaged({
+      const { rows, total } = await CustomerAdminService.getCustomersPaged({
         limit: pageSize,
         offset: page * pageSize,
         searchQuery: searchQuery.trim() || undefined,
@@ -823,7 +823,7 @@ export const AdminDashboardScreen: React.FC = () => {
                 style={styles.topupBtn}
                 onPress={async () => {
                   try {
-                    await CustomerService.adjustWallet(customer.id, 100, 'Admin quick top-up');
+                    await CustomerAdminService.adjustWallet(customer.id, 100, 'Admin quick top-up');
                     await loadCustomers();
                     Alert.alert('Success', `Added ₹100 to ${customer.name}'s wallet`);
                   } catch (e: any) {
@@ -1871,7 +1871,7 @@ export const AdminDashboardScreen: React.FC = () => {
                       return;
                     }
                     if (!walletModalCustomerId) return;
-                    await CustomerService.adjustWallet(walletModalCustomerId, amt, walletNote);
+                    await CustomerAdminService.adjustWallet(walletModalCustomerId, amt, walletNote);
                     toast.show('Wallet updated', { type: 'success' });
                     setWalletModalVisible(false);
                     await loadSubscriptions();

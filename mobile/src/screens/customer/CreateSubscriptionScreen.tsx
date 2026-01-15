@@ -19,7 +19,7 @@ import { SubscriptionService } from '../../services/api/subscriptions';
 import { useAuthStore } from '../../store/authStore';
 import { supabase } from '../../services/supabase';
 import { getDefaultAddress } from '../../services/address';
-import { cdn } from '../../utils/cdn';
+import { cdn } from '../../utils/helpers';
 
 interface CreateSubscriptionScreenProps {
   product: any;

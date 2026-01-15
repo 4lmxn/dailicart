@@ -1,7 +1,11 @@
 import { supabase } from '../supabase';
 import { Customer } from './types';
 
-export class CustomerService {
+/**
+ * Admin-side customer management operations
+ * For customer self-service, see customerProfile.ts
+ */
+export class CustomerAdminService {
   /**
    * Paged customers with optional search.
    * NOTE: Active / inactive & low wallet filters are applied client-side for now.

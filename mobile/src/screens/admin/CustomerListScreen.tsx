@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { CustomerService } from '../../services/api/customers';
+import { CustomerAdminService } from '../../services/api/customers';
 import { theme } from '../../theme';
 import { AdminScreenProps } from '../../navigation/types';
 import { useToast } from '../../components/Toast';
@@ -36,7 +36,7 @@ export const CustomerListScreen: React.FC<AdminScreenProps<'CustomerList'>> = ()
     try {
       if (!append) setLoading(true); else setLoadingMore(true);
       setError(null);
-      const { rows: data, total } = await CustomerService.getCustomersPaged({
+      const { rows: data, total } = await CustomerAdminService.getCustomersPaged({
         limit: PAGE_SIZE,
         offset: page * PAGE_SIZE,
         searchQuery: searchQuery.trim() || undefined,
@@ -107,7 +107,7 @@ export const CustomerListScreen: React.FC<AdminScreenProps<'CustomerList'>> = ()
           style={styles.topupBtn}
           onPress={async () => {
             try {
-              await CustomerService.adjustWallet(item.id, 100, 'Admin quick top-up');
+              await CustomerAdminService.adjustWallet(item.id, 100, 'Admin quick top-up');
               fetchPage(false);
               toast.show('Wallet +100', { type: 'success' });
             } catch (e: any) {

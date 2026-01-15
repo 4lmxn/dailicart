@@ -4,7 +4,7 @@ import { User, AuthResponse } from '../types';
 import { STORAGE_KEYS } from '../constants';
 import { AuthService, AuthUser } from '../services/auth/authService';
 import { supabase } from '../services/supabase';
-import { CustomerService } from '../services/api/customer';
+import { CustomerProfileService } from '../services/api/customerProfile';
 
 // Helper to map AuthUser/SupabaseUser to our User type - eliminates duplication
 function mapToUser(source: AuthUser | { id: string; email?: string | null; phone?: string | null; user_metadata?: any }): User {
@@ -245,7 +245,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             isLoading: false,
           });
           // Ensure customer record exists
-          CustomerService.ensureUserRecords(currentSession.user.id).catch(() => {});
+          CustomerProfileService.ensureUserRecords(currentSession.user.id).catch(() => {});
         } else if (event === 'TOKEN_REFRESHED' && currentSession) {
           await AsyncStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, currentSession.access_token);
           useAuthStore.setState({ accessToken: currentSession.access_token });

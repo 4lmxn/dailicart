@@ -14,9 +14,8 @@ import { supabase } from '../../services/supabase';
 import { useAuthStore } from '../../store/authStore';
 import { formatCurrency } from '../../utils/helpers';
 import { Skeleton } from '../../components/Skeleton';
-import { StatusBadge } from '../../components/ui/StatusBadge';
+import { StatusBadge, PressableCard } from '../../components/ui';
 import { EmptyState } from '../../components/EmptyState';
-import { PressableCard } from '../../components/ui/PressableScale';
 
 interface OrderItem {
   productName: string;
