@@ -18,7 +18,9 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 const navigationRef = createNavigationContainerRef<RootStackParamList>();
 
-const DEV_MODE_ROLE = process.env.EXPO_PUBLIC_DEV_MODE_ROLE || '';
+// SECURITY: Dev mode only works in actual development builds
+// Never allow auth bypass in production, even if env var is set
+const DEV_MODE_ROLE = __DEV__ ? (process.env.EXPO_PUBLIC_DEV_MODE_ROLE || '') : '';
 
 const linking = {
   prefixes: ['idaily://', 'https://idaily.app'],
@@ -120,12 +122,17 @@ export const RootNavigator = () => {
   return (
     <NavigationContainer ref={navigationRef} linking={linking}>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="DevSelector">
-          {() => <RoleSelectorScreen onSelect={handleRoleSelect} />}
-        </Stack.Screen>
-        <Stack.Screen name="UserPicker">
-          {() => <UserPickerScreen onSelect={handleRoleSelect} />}
-        </Stack.Screen>
+        {/* Dev-only screens - only available in development builds */}
+        {__DEV__ && (
+          <>
+            <Stack.Screen name="DevSelector">
+              {() => <RoleSelectorScreen onSelect={handleRoleSelect} />}
+            </Stack.Screen>
+            <Stack.Screen name="UserPicker">
+              {() => <UserPickerScreen onSelect={handleRoleSelect} />}
+            </Stack.Screen>
+          </>
+        )}
         <Stack.Screen name="Auth" component={AuthNavigator} />
         <Stack.Screen name="Onboarding" component={OnboardingScreen} />
         <Stack.Screen name="Customer" component={CustomerNavigator} />
