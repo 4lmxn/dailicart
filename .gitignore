@@ -1,0 +1,150 @@
+# =============================================================================
+# iDaily Project - Root .gitignore
+# =============================================================================
+
+# =============================================================================
+# SECRETS & ENVIRONMENT FILES - NEVER COMMIT THESE
+# =============================================================================
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+*.pem
+*.key
+*.p12
+*.p8
+*.jks
+*.keystore
+*.mobileprovision
+secrets/
+credentials/
+
+# Supabase local
+supabase/.env
+supabase/.temp/
+
+# =============================================================================
+# DEPENDENCIES
+# =============================================================================
+node_modules/
+.pnp/
+.pnp.js
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+package-lock.json.bak
+
+# =============================================================================
+# BUILD OUTPUTS
+# =============================================================================
+dist/
+build/
+out/
+.next/
+web-build/
+
+# Expo
+.expo/
+expo-env.d.ts
+
+# Android
+mobile/android/
+*.apk
+*.aab
+*.dex
+*.class
+local.properties
+.gradle/
+captures/
+
+# iOS
+mobile/ios/
+*.ipa
+*.xcuserstate
+*.xcworkspace
+Pods/
+DerivedData/
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Metro bundler
+.metro-health-check*
+metro-cache/
+
+# =============================================================================
+# IDE & EDITOR
+# =============================================================================
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
+.project
+.classpath
+.c9/
+*.swp
+*.swo
+*~
+
+# =============================================================================
+# OS FILES
+# =============================================================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# =============================================================================
+# TESTING & COVERAGE
+# =============================================================================
+coverage/
+.nyc_output/
+*.lcov
+.coverage
+htmlcov/
+.jest/
+
+# =============================================================================
+# LOGS & DEBUG
+# =============================================================================
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# =============================================================================
+# TYPESCRIPT
+# =============================================================================
+*.tsbuildinfo
+tsconfig.tsbuildinfo
+
+# =============================================================================
+# MISC
+# =============================================================================
+.cache/
+.parcel-cache/
+.temp/
+tmp/
+temp/
+
+# Seed/demo data with real user data
+*seed-*.json
+test-data-*.json
+
+# Generated native folders (Expo handles these)
+/ios
+/android

@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "expo-linear-gradient": "^15.0.8"
+  },
+  "devDependencies": {
+    "@types/react": "~19.1.10",
+    "typescript": "~5.9.2"
+  }
+}
