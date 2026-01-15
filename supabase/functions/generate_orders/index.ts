@@ -1,50 +1,82 @@
 // Supabase Edge Function: generate_orders
-// Schedules or triggers idempotent order generation from subscriptions
-// Runtime: Deno
+// Triggers idempotent order generation from subscriptions
+// Should be called by a cron job or admin action
 
-import "https://deno.land/x/xhr@0.3.1/mod.ts";
-import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.1";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.43.1';
+import { corsHeaders, handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 
-serve(async (req) => {
+Deno.serve(async (req) => {
+  // Handle CORS preflight
+  const corsResponse = handleCors(req);
+  if (corsResponse) return corsResponse;
+
   try {
-    const url = new URL(req.url);
-    const start = url.searchParams.get("start");
-    const end = url.searchParams.get("end");
-    const user_id = url.searchParams.get("user_id");
-
-    // Support JSON body overrides
-    let body: any = {};
-    if (req.headers.get("content-type")?.includes("application/json")) {
-      try { body = await req.json(); } catch (_) {}
-    }
-
-    const p_start = body.start || start || new Date().toISOString().slice(0,10);
-    const p_end = body.end || end || new Date(Date.now() + 30*24*60*60*1000).toISOString().slice(0,10);
-    const p_user_id = body.user_id || user_id || null;
-
-    const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
     if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-      return new Response(JSON.stringify({ error: "Missing Supabase env vars" }), { status: 500, headers: { "content-type": "application/json" } });
+      return errorResponse('Missing Supabase env vars', 500);
     }
 
+    // Validate JWT - only admins should trigger this
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return errorResponse('Missing authorization header', 401);
+    }
+
+    const token = authHeader.replace('Bearer ', '');
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user) {
+      return errorResponse('Invalid or expired token', 401);
+    }
+
+    // Check if user is admin
+    const { data: userData } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (userData?.role !== 'admin') {
+      return errorResponse('Admin access required', 403);
+    }
+
+    // Parse parameters from URL or body
+    const url = new URL(req.url);
+    let body: Record<string, unknown> = {};
+    if (req.headers.get('content-type')?.includes('application/json')) {
+      try { body = await req.json(); } catch { /* ignore */ }
+    }
+
+    const today = new Date().toISOString().slice(0, 10);
+    const thirtyDaysLater = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+    const p_start = String(body.start || url.searchParams.get('start') || today);
+    const p_end = String(body.end || url.searchParams.get('end') || thirtyDaysLater);
+    const p_user_id = body.user_id || url.searchParams.get('user_id') || null;
 
     // Call SQL function
-    const { data, error } = await supabase.rpc("generate_subscription_orders", {
+    const { data, error } = await supabase.rpc('generate_subscription_orders', {
       p_start,
       p_end,
       p_user_id,
     });
 
     if (error) {
-      return new Response(JSON.stringify({ ok: false, error: error.message }), { status: 400, headers: { "content-type": "application/json" } });
+      return errorResponse(error.message);
     }
 
-    return new Response(JSON.stringify({ ok: true, start: p_start, end: p_end, user_id: p_user_id, result: data }), { status: 200, headers: { "content-type": "application/json" } });
+    return jsonResponse({ 
+      ok: true, 
+      start: p_start, 
+      end: p_end, 
+      user_id: p_user_id, 
+      result: data 
+    });
+
   } catch (e) {
-    return new Response(JSON.stringify({ ok: false, error: e?.message || String(e) }), { status: 500, headers: { "content-type": "application/json" } });
+    return errorResponse(e instanceof Error ? e.message : String(e), 500);
   }
 });
