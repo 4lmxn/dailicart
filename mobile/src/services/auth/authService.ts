@@ -4,6 +4,7 @@ import { Platform } from 'react-native';
 import { makeRedirectUri } from 'expo-auth-session';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_KEYS } from '../../constants';
+import { sendOtpSchema, verifyOtpSchema, safeValidate } from '../../utils/validation';
 
 export interface AuthUser {
   id: string;
@@ -185,79 +186,18 @@ export class AuthService {
   }
 
   /**
-   * Email/password sign-in (legacy screens support)
-   */
-  static async signInWithEmail(email: string, password: string) {
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      return { success: !error, data, error: error?.message } as const;
-    } catch (e: any) {
-      return { success: false, data: null, error: e?.message || 'Sign-in failed' } as const;
-    }
-  }
-
-  /**
-   * Email/password sign-up with basic profile metadata (legacy screens support)
-   */
-  static async signUp(
-    email: string,
-    password: string,
-    fullName?: string,
-    phone?: string,
-    role: 'customer' | 'distributor' = 'customer'
-  ) {
-    try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: { full_name: fullName, phone, role },
-        },
-      });
-      return { data, error };
-    } catch (error: any) {
-      return { data: null, error };
-    }
-  }
-
-  /**
-   * Create customer profile (minimal no-op stub for type compatibility)
-   */
-  static async createCustomerProfile(
-    userId: string,
-    address: string,
-    city: string,
-    area: string,
-    pincode: string
-  ) {
-    try {
-      // Optionally persist to DB; keeping as stub for now
-      return { error: null } as const;
-    } catch (error: any) {
-      return { error } as const;
-    }
-  }
-
-  /**
-   * Create distributor profile (minimal no-op stub for type compatibility)
-   */
-  static async createDistributorProfile(
-    userId: string,
-    zone: string,
-    vehicleNumber: string
-  ) {
-    try {
-      // Optionally persist to DB; keeping as stub for now
-      return { error: null } as const;
-    } catch (error: any) {
-      return { error } as const;
-    }
-  }
-  /**
-   * Sign in with phone number (sends OTP)
+   * Sign in with phone number (sends OTP via Twilio)
+   * This is one of only two supported auth methods (along with Google OAuth)
    */
   static async signInWithPhone(phone: string): Promise<SignInWithPhoneResponse> {
     try {
+      // Validate phone number format
+      const rawPhone = phone.startsWith('+91') ? phone.slice(3) : phone.startsWith('+') ? phone.slice(1) : phone;
+      const validation = safeValidate(sendOtpSchema, { phone: rawPhone });
+      if (!validation.success) {
+        return { success: false, error: validation.error };
+      }
+
       // Format phone number (ensure +91 prefix for India)
       const formattedPhone = phone.startsWith('+') ? phone : `+91${phone}`;
 
@@ -295,6 +235,13 @@ export class AuthService {
    */
   static async verifyOTP(phone: string, otp: string): Promise<VerifyOTPResponse> {
     try {
+      // Validate phone and OTP format
+      const rawPhone = phone.startsWith('+91') ? phone.slice(3) : phone.startsWith('+') ? phone.slice(1) : phone;
+      const validation = safeValidate(verifyOtpSchema, { phone: rawPhone, otp });
+      if (!validation.success) {
+        return { success: false, error: validation.error };
+      }
+
       const formattedPhone = phone.startsWith('+') ? phone : `+91${phone}`;
 
       const { data, error } = await supabase.auth.verifyOtp({

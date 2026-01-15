@@ -1,5 +1,12 @@
 import { supabase } from '../supabase';
 import { uploadTicketAttachment } from '../../utils/imageUpload';
+import { uuidSchema, safeTextSchema, safeValidate, z } from '../../utils/validation';
+
+// Local support validation schemas
+const ticketSubjectSchema = safeTextSchema.min(5, 'Subject too short').max(100, 'Subject too long');
+const ticketDescriptionSchema = safeTextSchema.min(10, 'Please provide more detail').max(2000, 'Description too long');
+const ticketMessageSchema = safeTextSchema.min(1, 'Message cannot be empty').max(1000, 'Message too long');
+const ticketCategorySchema = z.enum(['delivery_issue', 'product_quality', 'payment', 'refund', 'subscription', 'other']);
 
 export type TicketCategory = 'delivery_issue' | 'product_quality' | 'payment' | 'refund' | 'subscription' | 'other';
 export type TicketPriority = 'low' | 'medium' | 'high' | 'urgent';
@@ -179,6 +186,30 @@ export class SupportService {
     userId: string,
     input: CreateTicketInput
   ): Promise<SupportTicket> {
+    // Validate all inputs
+    const userValidation = safeValidate(uuidSchema, userId);
+    if (!userValidation.success) {
+      throw new Error(`Invalid user ID: ${userValidation.error}`);
+    }
+    const subjectValidation = safeValidate(ticketSubjectSchema, input.subject);
+    if (!subjectValidation.success) {
+      throw new Error(subjectValidation.error);
+    }
+    const descValidation = safeValidate(ticketDescriptionSchema, input.description);
+    if (!descValidation.success) {
+      throw new Error(descValidation.error);
+    }
+    const categoryValidation = safeValidate(ticketCategorySchema, input.category);
+    if (!categoryValidation.success) {
+      throw new Error(categoryValidation.error);
+    }
+    if (input.orderId) {
+      const orderValidation = safeValidate(uuidSchema, input.orderId);
+      if (!orderValidation.success) {
+        throw new Error(`Invalid order ID: ${orderValidation.error}`);
+      }
+    }
+
     try {
       const { data, error } = await supabase
         .from('support_tickets')
@@ -266,6 +297,20 @@ export class SupportService {
     senderRole: 'customer' | 'admin' | 'superadmin',
     message: string
   ): Promise<TicketMessage> {
+    // Validate inputs
+    const ticketValidation = safeValidate(uuidSchema, ticketId);
+    if (!ticketValidation.success) {
+      throw new Error(`Invalid ticket ID: ${ticketValidation.error}`);
+    }
+    const senderValidation = safeValidate(uuidSchema, senderId);
+    if (!senderValidation.success) {
+      throw new Error(`Invalid sender ID: ${senderValidation.error}`);
+    }
+    const messageValidation = safeValidate(ticketMessageSchema, message);
+    if (!messageValidation.success) {
+      throw new Error(messageValidation.error);
+    }
+
     try {
       const { data, error } = await supabase
         .from('ticket_messages')

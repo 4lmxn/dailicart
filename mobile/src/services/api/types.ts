@@ -230,10 +230,13 @@ export interface Product {
   id: string;
   name: string;
   brand: string;
+  sku?: string;
   category: string;
   description: string;
   price: number;
   unit: string;
+  minOrderQty?: number;
+  maxOrderQty?: number;
   stock: number;
   lowStockThreshold: number;
   isActive: boolean;

@@ -21,14 +21,10 @@ const { width } = Dimensions.get('window');
 
 interface LoginScreenProps {
   onSendOTP: (phone: string) => void;
-  onForgotPassword?: () => void;
-  onSignup?: () => void;
 }
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ 
   onSendOTP,
-  onForgotPassword,
-  onSignup,
 }) => {
   const { loginWithSupabase } = useAuthStore();
   const [phone, setPhone] = useState('');
@@ -190,7 +186,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
 
               {/* Send OTP Button */}
               <TouchableOpacity
-                style={[styles.primaryButton, (loading || isLockedOut) && styles.buttonDisabled]}
+                style={[styles.primaryButton, (loading || !!isLockedOut) && styles.buttonDisabled]}
                 onPress={handleSendOTP}
                 disabled={loading || !!isLockedOut}
                 activeOpacity={0.8}
@@ -229,19 +225,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                 )}
               </TouchableOpacity>
 
-              {/* Sign Up Link */}
-              {onSignup && (
-                <TouchableOpacity 
-                  style={styles.signupLink}
-                  onPress={onSignup}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.signupText}>
-                    Don't have an account?{' '}
-                    <Text style={styles.signupTextBold}>Create Account</Text>
-                  </Text>
-                </TouchableOpacity>
-              )}
             </View>
 
             {/* Footer */}

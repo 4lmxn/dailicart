@@ -217,7 +217,7 @@ export const DistributorDetailScreen: React.FC<AdminScreenProps<'DistributorDeta
         building: a.tower?.name || '—',
         address: a.society?.address || '—',
         effectiveFrom: a.assigned_at,
-        effectiveTo: null,
+        effectiveTo: undefined,
       }))
     );
   };

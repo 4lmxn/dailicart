@@ -301,7 +301,7 @@ export const CustomerDetailScreen: React.FC<AdminScreenProps<'CustomerDetail'>> 
           <View key={sub.id} style={styles.subscriptionCard}>
             <View style={styles.subscriptionHeader}>
               <Text style={styles.subscriptionProduct}>{sub.productName}</Text>
-              <View style={[styles.statusBadge, sub.status === 'active' ? styles.statusActive : styles.statusPaused]}>
+              <View style={[styles.subscriptionStatusBadge, sub.status === 'active' ? styles.statusActive : styles.statusPaused]}>
                 <Text style={styles.statusText}>{sub.status.toUpperCase()}</Text>
               </View>
             </View>
@@ -751,7 +751,7 @@ const styles = StyleSheet.create({
     flex: 1,
     letterSpacing: -0.3,
   },
-  statusBadge: {
+  subscriptionStatusBadge: {
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 12,

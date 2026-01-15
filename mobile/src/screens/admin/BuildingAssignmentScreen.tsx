@@ -19,11 +19,12 @@ import { AdminScreenProps } from '../../navigation/types';
 interface Building {
   society_id: string;
   society_name: string;
+  society_address?: string;
   tower_id: string;
   tower_name: string;
-  floors: number;
-  total_units: number;
-  assigned_distributors: string[] | null;
+  floors?: number;
+  total_units?: number;
+  assigned_distributors?: string[] | null;
 }
 
 interface DistributorBuilding {

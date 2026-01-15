@@ -1,5 +1,11 @@
 import { supabase } from '../supabase';
 import { WalletTransaction } from './types';
+import { 
+  uuidSchema, 
+  amountSchema, 
+  walletTopupSchema,
+  safeValidate 
+} from '../../utils/validation';
 
 // Generate a unique idempotency key
 function generateIdempotencyKey(prefix: string): string {
@@ -30,9 +36,23 @@ export interface LedgerEntry {
 
 export class WalletService {
   /**
+   * Validate UUID format
+   */
+  private static validateUserId(userId: string): string | null {
+    const result = safeValidate(uuidSchema, userId);
+    return result.success ? null : result.error;
+  }
+
+  /**
    * Get customer wallet balance using the secure RPC function
    */
   static async getBalance(userId: string): Promise<number> {
+    const validationError = this.validateUserId(userId);
+    if (validationError) {
+      console.error('Invalid userId:', validationError);
+      return 0;
+    }
+
     try {
       const { data, error } = await supabase
         .rpc('get_wallet_balance', { p_user_id: userId });
@@ -60,6 +80,17 @@ export class WalletService {
    * Get detailed wallet balance including holds
    */
   static async getDetailedBalance(userId: string): Promise<WalletBalance> {
+    const validationError = this.validateUserId(userId);
+    if (validationError) {
+      console.error('Invalid userId:', validationError);
+      return {
+        availableBalance: 0,
+        heldAmount: 0,
+        totalBalance: 0,
+        isLocked: false,
+      };
+    }
+
     try {
       const { data, error } = await supabase
         .rpc('get_wallet_balance', { p_user_id: userId });
@@ -262,6 +293,16 @@ export class WalletService {
     description: string,
     idempotencyKey?: string
   ): Promise<string> {
+    // Validate inputs
+    const userValidation = safeValidate(uuidSchema, userId);
+    if (!userValidation.success) {
+      throw new Error(`Invalid user ID: ${userValidation.error}`);
+    }
+    const amountValidation = safeValidate(amountSchema, amount);
+    if (!amountValidation.success) {
+      throw new Error(`Invalid amount: ${amountValidation.error}`);
+    }
+
     try {
       const key = idempotencyKey || generateIdempotencyKey('CREDIT');
 
@@ -300,6 +341,16 @@ export class WalletService {
     description: string,
     idempotencyKey?: string
   ): Promise<string> {
+    // Validate inputs
+    const userValidation = safeValidate(uuidSchema, userId);
+    if (!userValidation.success) {
+      throw new Error(`Invalid user ID: ${userValidation.error}`);
+    }
+    const amountValidation = safeValidate(amountSchema, amount);
+    if (!amountValidation.success) {
+      throw new Error(`Invalid amount: ${amountValidation.error}`);
+    }
+
     try {
       const key = idempotencyKey || generateIdempotencyKey('DEBIT');
 
@@ -342,6 +393,12 @@ export class WalletService {
     paymentMethod: string,
     paymentId: string
   ): Promise<WalletTransaction> {
+    // Validate topup amount (includes min/max limits)
+    const validation = safeValidate(walletTopupSchema, { amount });
+    if (!validation.success) {
+      throw new Error(validation.error);
+    }
+
     try {
       // Create idempotency key based on payment ID to prevent duplicates
       const idempotencyKey = `PAY-${paymentId}`;

@@ -255,9 +255,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack }) => {
       setAddresses(prev => [...prev, {
         id: newAddr.id,
         label: newAddr.is_default ? 'Default' : 'Address',
-        flatNo: newAddr.units?.number || '',
-        society: newAddr.societies?.name || '',
-        street: `Tower ${newAddr.towers?.name || ''}`,
+        flatNo: (newAddr.units as any)?.number || (Array.isArray(newAddr.units) ? newAddr.units[0]?.number : '') || '',
+        society: (newAddr.societies as any)?.name || (Array.isArray(newAddr.societies) ? newAddr.societies[0]?.name : '') || '',
+        street: `Tower ${(newAddr.towers as any)?.name || (Array.isArray(newAddr.towers) ? newAddr.towers[0]?.name : '') || ''}`,
         pincode: '',
         isDefault: newAddr.is_default || false,
       }]);

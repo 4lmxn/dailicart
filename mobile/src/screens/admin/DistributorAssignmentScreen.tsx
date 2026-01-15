@@ -12,8 +12,10 @@ interface Assignment {
   id: any;
   distributor: any;
   society: any;
-  effective_from: any;
-  effective_to: any;
+  tower?: any;
+  assigned_at?: any;
+  effective_from?: any;
+  effective_to?: any;
   is_active: any;
 }
 
@@ -48,21 +50,30 @@ export const DistributorAssignmentScreen = () => {
     loadAssignments();
   };
 
-  const renderItem = ({ item }: { item: Assignment }) => (
-    <View style={styles.card}>
-      <View style={styles.cardHeader}>
-        <Text style={styles.distributorName}>{(item.distributor as any)?.user?.name || 'Unknown'}</Text>
-        <View style={[styles.statusBadge, item.is_active && styles.statusActive]}>
-          <Text style={styles.statusText}>{item.is_active ? 'Active' : 'Inactive'}</Text>
+  const renderItem = ({ item }: { item: Assignment }) => {
+    // Handle both field name variations
+    const assignedDate = item.effective_from || item.assigned_at;
+    const distributor = Array.isArray(item.distributor) ? item.distributor[0] : item.distributor;
+    const society = Array.isArray(item.society) ? item.society[0] : item.society;
+    const tower = Array.isArray(item.tower) ? item.tower[0] : item.tower;
+    const user = Array.isArray(distributor?.user) ? distributor?.user[0] : distributor?.user;
+    
+    return (
+      <View style={styles.card}>
+        <View style={styles.cardHeader}>
+          <Text style={styles.distributorName}>{user?.name || 'Unknown'}</Text>
+          <View style={[styles.statusBadge, item.is_active && styles.statusActive]}>
+            <Text style={styles.statusText}>{item.is_active ? 'Active' : 'Inactive'}</Text>
+          </View>
+        </View>
+        <View style={styles.cardBody}>
+          <Text style={styles.buildingText}>🏢 {society?.name}{tower?.name ? ` - ${tower.name}` : ''}</Text>
+          {assignedDate && <Text style={styles.dateText}>From: {new Date(assignedDate).toLocaleDateString()}</Text>}
+          {item.effective_to && <Text style={styles.dateText}>To: {new Date(item.effective_to).toLocaleDateString()}</Text>}
         </View>
       </View>
-      <View style={styles.cardBody}>
-        <Text style={styles.buildingText}>🏢 {(item.society as any)?.name}</Text>
-        <Text style={styles.dateText}>From: {new Date(item.effective_from).toLocaleDateString()}</Text>
-        {item.effective_to && <Text style={styles.dateText}>To: {new Date(item.effective_to).toLocaleDateString()}</Text>}
-      </View>
-    </View>
-  );
+    );
+  };
 
   if (loading) {
     return (

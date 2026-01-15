@@ -17,10 +17,12 @@ interface SalarySlip {
   id: string;
   period_start: string;
   period_end: string;
-  base_amount: number;
+  base_earnings?: number;
+  base_amount?: number;
   bonus_amount: number;
   deductions: number;
-  net_amount: number;
+  final_amount?: number;
+  net_amount?: number;
   deliveries_count: number;
   status: string;
   paid_at: string | null;
@@ -73,6 +75,10 @@ export const SalarySlipsScreen = ({ navigation }: DistributorScreenProps<'Salary
   };
 
   const renderItem = ({ item }: { item: SalarySlip }) => {
+    // Handle both field name variations from API
+    const baseAmount = item.base_amount ?? item.base_earnings ?? 0;
+    const netAmount = item.net_amount ?? item.final_amount ?? 0;
+    
     return (
       <View style={styles.card}>
         <View style={styles.cardHeader}>
@@ -86,7 +92,7 @@ export const SalarySlipsScreen = ({ navigation }: DistributorScreenProps<'Salary
         <View style={styles.cardBody}>
           <View style={styles.row}>
             <Text style={styles.label}>Base Earnings:</Text>
-            <Text style={styles.value}>{formatCurrency(item.base_amount)}</Text>
+            <Text style={styles.value}>{formatCurrency(baseAmount)}</Text>
           </View>
           <View style={styles.row}>
             <Text style={styles.label}>Deliveries:</Text>
@@ -106,7 +112,7 @@ export const SalarySlipsScreen = ({ navigation }: DistributorScreenProps<'Salary
           )}
           <View style={[styles.row, styles.totalRow]}>
             <Text style={styles.totalLabel}>Net Amount:</Text>
-            <Text style={styles.totalValue}>{formatCurrency(item.net_amount)}</Text>
+            <Text style={styles.totalValue}>{formatCurrency(netAmount)}</Text>
           </View>
         </View>
       </View>
