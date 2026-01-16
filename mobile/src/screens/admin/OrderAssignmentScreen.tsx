@@ -7,7 +7,7 @@ import { EmptyState } from '../../components/EmptyState';
 import { ErrorBanner } from '../../components/ErrorBanner';
 import { useToast } from '../../components/Toast';
 import { AdminService } from '../../services/api/admin';
-import { formatQuantity } from '../../utils/helpers';
+import { formatQuantity, getLocalDateString } from '../../utils/helpers';
 
 interface Order {
   id: string;
@@ -35,7 +35,7 @@ export const OrderAssignmentScreen = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(getLocalDateString());
   const [filterStatus, setFilterStatus] = useState<string>('unassigned');
   const [assignModalVisible, setAssignModalVisible] = useState(false);
   const [selectedOrders, setSelectedOrders] = useState<string[]>([]);

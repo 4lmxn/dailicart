@@ -27,9 +27,9 @@ export async function createAddress(input: AddressInput) {
       .eq('unit_id', input.unit_id)
       .not('user_id', 'eq', userId)
       .limit(1)
-      .single();
+      .maybeSingle();
 
-    if (checkError && checkError.code !== 'PGRST116') throw checkError;
+    if (checkError) throw checkError;
     
     if (existingAddress) {
       throw new Error(`This unit is already assigned to another customer. Please select a different unit or contact support.`);
@@ -78,9 +78,9 @@ export async function updateAddress(addressId: string, patch: Partial<AddressInp
       .eq('unit_id', patch.unit_id)
       .neq('user_id', currentAddr.user_id)
       .limit(1)
-      .single();
+      .maybeSingle();
 
-    if (checkError && checkError.code !== 'PGRST116') throw checkError;
+    if (checkError) throw checkError;
     
     if (existingAddress) {
       throw new Error(`This unit is already assigned to another customer. Please select a different unit or contact support.`);

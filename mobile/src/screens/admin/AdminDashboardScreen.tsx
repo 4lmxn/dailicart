@@ -21,7 +21,7 @@ import { Skeleton, SkeletonLineGroup } from '../../components/Skeleton';
 import { useAuthStore } from '../../store/authStore';
 import { theme } from '../../theme';
 import { AppBar } from '../../components/AppBar';
-import { formatCurrency } from '../../utils/helpers';
+import { formatCurrency, getLocalDateString, getLocalDateOffsetString } from '../../utils/helpers';
 import { ProductService } from '../../services/api/products';
 import { useAnalyticsStore } from '../../store/analyticsStore';
 import { CustomerAdminService } from '../../services/api/customers';
@@ -364,8 +364,8 @@ export const AdminDashboardScreen: React.FC = () => {
 
   const loadDistributors = async () => {
     try {
-      const today = new Date().toISOString().split('T')[0];
-      const weekAgo = new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const today = getLocalDateString();
+      const weekAgo = getLocalDateOffsetString(-6);
       
       // Fetch distributors with their user info
       const { data: distData, error: distError } = await supabase

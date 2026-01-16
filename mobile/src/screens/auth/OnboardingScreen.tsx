@@ -134,9 +134,15 @@ export const OnboardingScreen: React.FC<Props> = ({ onComplete }) => {
         .from('distributor_activation_codes')
         .select('id, code, used, expires_at')
         .eq('code', activationCode.trim().toUpperCase())
-        .single();
+        .maybeSingle();
       
-      if (error || !data) {
+      if (error) {
+        setActivationError('Error verifying code');
+        setActivationVerified(false);
+        return;
+      }
+      
+      if (!data) {
         setActivationError('Invalid activation code');
         setActivationVerified(false);
         return;

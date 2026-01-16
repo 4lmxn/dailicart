@@ -13,7 +13,7 @@ import { AppLayout } from '../../components/AppLayout';
 import { AppBar } from '../../components/AppBar';
 import { Skeleton } from '../../components/Skeleton';
 import { supabase } from '../../services/supabase';
-import { formatCurrency } from '../../utils/helpers';
+import { formatCurrency, getLocalDateString, getLocalDateOffsetString } from '../../utils/helpers';
 import { theme } from '../../theme';
 import type { AdminScreenProps } from '../../navigation/types';
 
@@ -88,19 +88,15 @@ export const RevenueAnalyticsScreen = ({ navigation }: AdminScreenProps<'Revenue
   const loadData = async () => {
     if (!loading) setLoading(true);
 
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDateString();
     let startDate = today;
     let days = 1;
 
     if (period === 'week') {
-      const d = new Date();
-      d.setDate(d.getDate() - 6);
-      startDate = d.toISOString().split('T')[0];
+      startDate = getLocalDateOffsetString(-6);
       days = 7;
     } else if (period === 'month') {
-      const d = new Date();
-      d.setDate(d.getDate() - 29);
-      startDate = d.toISOString().split('T')[0];
+      startDate = getLocalDateOffsetString(-29);
       days = 30;
     }
 
@@ -147,9 +143,7 @@ export const RevenueAnalyticsScreen = ({ navigation }: AdminScreenProps<'Revenue
       // Daily breakdown with society stats
       const dailyMap = new Map<string, DailyRevenueWithSocieties>();
       for (let i = 0; i < days; i++) {
-        const d = new Date();
-        d.setDate(d.getDate() - (days - 1 - i));
-        const dateStr = d.toISOString().split('T')[0];
+        const dateStr = getLocalDateOffsetString(-(days - 1 - i));
         dailyMap.set(dateStr, { date: dateStr, revenue: 0, orders: 0, delivered: 0, pending: 0, societies: [] });
       }
 

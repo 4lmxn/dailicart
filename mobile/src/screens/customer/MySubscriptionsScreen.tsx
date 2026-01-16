@@ -15,7 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppLayout } from '../../components/AppLayout';
 import { AppBar } from '../../components/AppBar';
 import { theme } from '../../theme';
-import { formatCurrency, formatQuantity } from '../../utils/helpers';
+import { formatCurrency, formatQuantity, getLocalDateString } from '../../utils/helpers';
 import { useAuthStore } from '../../store/authStore';
 import { SubscriptionService } from '../../services/api/subscriptions';
 import { supabase } from '../../services/supabase';
@@ -245,7 +245,7 @@ export const MySubscriptionsScreen: React.FC<MySubscriptionsScreenProps> = ({ on
       setSubscriptions((prev) =>
         prev.map((s) =>
           s.id === selectedSub.id
-            ? { ...s, status: 'paused', pausedUntil: pauseUntil.toISOString().split('T')[0] }
+            ? { ...s, status: 'paused', pausedUntil: getLocalDateString(pauseUntil) }
             : s
         )
       );
@@ -323,7 +323,7 @@ export const MySubscriptionsScreen: React.FC<MySubscriptionsScreenProps> = ({ on
     
     try {
       // Fetch orders for this subscription (only past/current deliveries, not future)
-      const today = new Date().toISOString().split('T')[0];
+      const today = getLocalDateString();
       const { data: orders, error } = await supabase
         .from('orders')
         .select('id, delivery_date, status, delivered_at')

@@ -12,6 +12,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import type { DistributorScreenProps } from '../../navigation/types';
 import { Skeleton } from '../../components/Skeleton';
 import { getAuthUserId } from '../../utils/auth';
+import { getLocalDateString, getLocalDateOffsetString } from '../../utils/helpers';
 import { supabase } from '../../services/supabase';
 import * as DistributorAPI from '../../services/api/distributors';
 
@@ -60,19 +61,15 @@ export const EarningsScreen = ({ navigation }: DistributorScreenProps<'Earnings'
       return;
     }
 
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDateString();
     let start = today;
     let days = 1;
     
     if (period === 'week') {
-      const d = new Date();
-      d.setDate(d.getDate() - 6);
-      start = d.toISOString().split('T')[0];
+      start = getLocalDateOffsetString(-6);
       days = 7;
     } else if (period === 'month') {
-      const d = new Date();
-      d.setDate(d.getDate() - 29);
-      start = d.toISOString().split('T')[0];
+      start = getLocalDateOffsetString(-29);
       days = 30;
     }
 
@@ -100,9 +97,7 @@ export const EarningsScreen = ({ navigation }: DistributorScreenProps<'Earnings'
       
       // Initialize all days
       for (let i = 0; i < days; i++) {
-        const d = new Date();
-        d.setDate(d.getDate() - (days - 1 - i));
-        const dateStr = d.toISOString().split('T')[0];
+        const dateStr = getLocalDateOffsetString(-(days - 1 - i));
         dailyMap.set(dateStr, { date: dateStr, amount: 0, orders: 0 });
       }
 

@@ -13,6 +13,7 @@ import { AppBar } from '../../components/AppBar';
 import { AppLayout } from '../../components/AppLayout';
 import { theme } from '../../theme';
 import { supabase } from '../../services/supabase';
+import { getLocalDateString } from '../../utils/helpers';
 import Toast from 'react-native-toast-message';
 import { AdminScreenProps } from '../../navigation/types';
 
@@ -177,7 +178,7 @@ export const BuildingAssignmentScreen: React.FC<AdminScreenProps<'BuildingAssign
           tower_id: towerId,
           society_id: towerData.society_id,
           is_active: true,
-          assigned_at: new Date().toISOString().split('T')[0],
+          assigned_at: getLocalDateString(),
         }, {
           onConflict: 'distributor_id,tower_id'
         });

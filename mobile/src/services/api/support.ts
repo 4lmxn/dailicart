@@ -1,6 +1,7 @@
 import { supabase } from '../supabase';
 import { uploadTicketAttachment } from '../../utils/imageUpload';
 import { uuidSchema, safeTextSchema, safeValidate, z } from '../../utils/validation';
+import { getLocalDateString } from '../../utils/helpers';
 
 // Local support validation schemas
 const ticketSubjectSchema = safeTextSchema.min(5, 'Subject too short').max(100, 'Subject too long');
@@ -557,13 +558,13 @@ export class SupportService {
    * Get the next available replacement date
    */
   static getNextReplacementDate(): string {
-    const now = new Date();
     if (this.canReplaceSameDay()) {
-      return now.toISOString().split('T')[0];
+      return getLocalDateString();
     }
     // Next day
-    now.setDate(now.getDate() + 1);
-    return now.toISOString().split('T')[0];
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return getLocalDateString(tomorrow);
   }
 
   /**

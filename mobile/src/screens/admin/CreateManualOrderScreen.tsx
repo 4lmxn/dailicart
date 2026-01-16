@@ -4,6 +4,7 @@ import { AppLayout } from '../../components/AppLayout';
 import { theme } from '../../theme';
 import { ErrorBanner } from '../../components/ErrorBanner';
 import { useToast } from '../../components/Toast';
+import { getLocalDateString } from '../../utils/helpers';
 import { AdminService } from '../../services/api/admin';
 import { supabase } from '../../services/supabase';
 import { ProductService } from '../../services/api/products';
@@ -36,7 +37,7 @@ export const CreateManualOrderScreen = ({ navigation }: any) => {
   const [selectedCustomer, setSelectedCustomer] = useState<string | null>(null);
   const [selectedAddress, setSelectedAddress] = useState<string | null>(null);
   const [selectedDistributor, setSelectedDistributor] = useState<string | null>(null);
-  const [deliveryDate, setDeliveryDate] = useState(new Date().toISOString().split('T')[0]);
+  const [deliveryDate, setDeliveryDate] = useState(getLocalDateString());
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);

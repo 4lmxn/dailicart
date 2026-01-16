@@ -1,4 +1,5 @@
 import { supabase } from '../supabase';
+import { getLocalDateString, getLocalDateOffsetString } from '../../utils/helpers';
 
 export interface RevenuePoint { date: string; amount: number; }
 export interface DeliveryStatus { status: string; count: number; }
@@ -8,9 +9,7 @@ export interface ProductPopularityPoint { name: string; units: number; }
 export const AnalyticsService = {
   async revenueTrend(days: number = 7): Promise<RevenuePoint[]> {
     try {
-      const today = new Date();
-      const startDate = new Date(today.getTime() - (days - 1) * 86400000);
-      const startStr = startDate.toISOString().split('T')[0];
+      const startStr = getLocalDateOffsetString(-(days - 1));
       
       const { data: orders, error } = await supabase
         .from('orders')
@@ -31,10 +30,9 @@ export const AnalyticsService = {
       // Generate all dates in range
       const result: RevenuePoint[] = [];
       for (let i = 0; i < days; i++) {
-        const d = new Date(today.getTime() - (days - i - 1) * 86400000);
-        const dateStr = d.toISOString().split('T')[0];
+        const dateStr = getLocalDateOffsetString(-(days - i - 1));
         result.push({ 
-          date: d.toISOString().slice(5, 10), 
+          date: dateStr.slice(5), // "MM-DD" format
           amount: revenueByDate.get(dateStr) || 0 
         });
       }
@@ -48,7 +46,7 @@ export const AnalyticsService = {
   
   async deliveryPerformance(): Promise<DeliveryStatus[]> {
     try {
-      const today = new Date().toISOString().split('T')[0];
+      const today = getLocalDateString();
       
       const { data: orders, error } = await supabase
         .from('orders')

@@ -14,12 +14,11 @@ import {
 import { AppLayout } from '../../components/AppLayout';
 import { AppBar } from '../../components/AppBar';
 import { theme } from '../../theme';
-import { formatCurrency } from '../../utils/helpers';
+import { formatCurrency, cdn, getLocalDateString } from '../../utils/helpers';
 import { SubscriptionService } from '../../services/api/subscriptions';
 import { useAuthStore } from '../../store/authStore';
 import { supabase } from '../../services/supabase';
 import { getDefaultAddress } from '../../services/address';
-import { cdn } from '../../utils/helpers';
 
 interface CreateSubscriptionScreenProps {
   product: any;
@@ -295,7 +294,7 @@ export const CreateSubscriptionScreen: React.FC<CreateSubscriptionScreenProps> =
         frequency,
         customDays: frequency === 'custom' ? customDays : undefined,
         deliveryTime,
-        startDate: startDate.toISOString().split('T')[0],
+        startDate: getLocalDateString(startDate),
       });
 
       Alert.alert(

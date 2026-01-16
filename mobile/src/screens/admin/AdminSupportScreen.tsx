@@ -20,6 +20,7 @@ import { AppBar } from '../../components/AppBar';
 import { EmptyState } from '../../components/EmptyState';
 import { useAuthStore } from '../../store/authStore';
 import { useToast } from '../../components/Toast';
+import { getLocalDateString } from '../../utils/helpers';
 import { supabase } from '../../services/supabase';
 import {
   SupportService,
@@ -334,11 +335,11 @@ export const AdminSupportScreen: React.FC<AdminSupportScreenProps> = ({ onBack }
   };
 
   const canReplaceSameDay = SupportService.canReplaceSameDay();
-  const todayDate = new Date().toISOString().split('T')[0];
+  const todayDate = getLocalDateString();
   const tomorrowDate = (() => {
     const d = new Date();
     d.setDate(d.getDate() + 1);
-    return d.toISOString().split('T')[0];
+    return getLocalDateString(d);
   })();
 
   const handleEscalateTicket = async () => {

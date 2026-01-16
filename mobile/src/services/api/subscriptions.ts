@@ -1,6 +1,7 @@
 import { supabase } from '../supabase';
 import { Subscription } from './types';
 import { uuidSchema, safeValidate, z } from '../../utils/validation';
+import { getLocalDateString } from '../../utils/helpers';
 
 // Local subscription validation schema
 const subscriptionQuantitySchema = z.number().int().min(1, 'Minimum quantity is 1').max(10, 'Maximum quantity is 10');
@@ -56,7 +57,7 @@ function calculateNextDeliveryDate(
     }
     
     if (isDeliveryDay) {
-      return current.toISOString().split('T')[0];
+      return getLocalDateString(current);
     }
     
     current.setDate(current.getDate() + 1);
@@ -65,7 +66,7 @@ function calculateNextDeliveryDate(
   // Fallback to tomorrow if no delivery found
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
-  return tomorrow.toISOString().split('T')[0];
+  return getLocalDateString(tomorrow);
 }
 
 export class SubscriptionService {
@@ -109,7 +110,7 @@ export class SubscriptionService {
       // Fetch order stats for all subscriptions in one query
       // Only count orders with delivery_date <= today (past/current deliveries, not future scheduled ones)
       const subscriptionIds = (data || []).map(s => s.id);
-      const today = new Date().toISOString().split('T')[0];
+      const today = getLocalDateString();
       const { data: ordersData } = await supabase
         .from('orders')
         .select('subscription_id, status, delivery_date')
@@ -353,7 +354,7 @@ export class SubscriptionService {
       if (subError || !sub) throw new Error('Subscription not found');
       
       // Find the next scheduled order for this subscription
-      const today = new Date().toISOString().split('T')[0];
+      const today = getLocalDateString();
       const { data: nextOrder, error: orderError } = await supabase
         .from('orders')
         .select('id')
@@ -443,7 +444,7 @@ export class SubscriptionService {
       if (error) throw error;
 
       // Delete future pending orders and regenerate them based on new frequency
-      const today = new Date().toISOString().split('T')[0];
+      const today = getLocalDateString();
       
       // Delete future orders that are still pending/scheduled
       const { error: deleteError } = await supabase
@@ -587,7 +588,7 @@ export class SubscriptionService {
       if (!params.addressId) {
         throw new Error('Address is required to create a subscription');
       }
-      const startDate = params.startDate || new Date().toISOString().split('T')[0];
+      const startDate = params.startDate || getLocalDateString();
       
       // Get the product price to lock it in the subscription
       const { data: product, error: productError } = await supabase

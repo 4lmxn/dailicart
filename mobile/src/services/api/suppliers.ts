@@ -1,4 +1,5 @@
 import { supabase } from '../../services/supabase';
+import { getLocalDateString } from '../../utils/helpers';
 
 export class SupplierService {
   static async getSuppliers() {
@@ -135,7 +136,7 @@ export class SupplierService {
     if (error) throw error;
     
     // Also record in distributor_stock_handover
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDateString();
     const { data: existing } = await supabase
       .from('distributor_stock_handover')
       .select('id, stock_given')

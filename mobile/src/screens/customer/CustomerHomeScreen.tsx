@@ -12,11 +12,10 @@ import {
 import { useAuthStore } from '../../store/authStore';
 import { theme } from '../../theme';
 import { AppBar } from '../../components/AppBar';
-import { formatCurrency } from '../../utils/helpers';
+import { formatCurrency, formatSocietyAddress, parseAddressJson, getLocalDateString } from '../../utils/helpers';
 import { WalletService } from '../../services/api/wallet';
 import { SubscriptionService } from '../../services/api/subscriptions';
 import { supabase } from '../../services/supabase';
-import { formatSocietyAddress, parseAddressJson } from '../../utils/helpers';
 import { getDefaultAddress } from '../../services/address';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -87,7 +86,7 @@ export const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = ({
       setActiveSubscriptions(active);
       
       // Count today's orders - both pending and delivered
-      const today = new Date().toISOString().split('T')[0];
+      const today = getLocalDateString();
       const { data: todayOrders } = await supabase
         .from('orders')
         .select('id, status')

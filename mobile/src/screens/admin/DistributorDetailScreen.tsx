@@ -14,7 +14,7 @@ import { theme } from '../../theme';
 import { AppLayout } from '../../components/AppLayout';
 import { AppBar } from '../../components/AppBar';
 import type { AdminScreenProps } from '../../navigation/types';
-import { formatCurrency } from '../../utils/helpers';
+import { formatCurrency, getLocalDateString, getLocalDateOffsetString } from '../../utils/helpers';
 import { supabase } from '../../services/supabase';
 import { AdminService } from '../../services/api/admin';
 import Toast from 'react-native-toast-message';
@@ -179,9 +179,9 @@ export const DistributorDetailScreen: React.FC<AdminScreenProps<'DistributorDeta
   };
 
   const loadDeliveryStats = async (distId: string) => {
-    const today = new Date().toISOString().split('T')[0];
-    const weekAgo = new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-    const monthAgo = new Date(Date.now() - 29 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const today = getLocalDateString();
+    const weekAgo = getLocalDateOffsetString(-6);
+    const monthAgo = getLocalDateOffsetString(-29);
 
     const [todayRes, weekRes, monthRes] = await Promise.all([
       supabase.from('orders').select('status').eq('assigned_distributor_id', distId).eq('delivery_date', today),

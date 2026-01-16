@@ -17,7 +17,7 @@ import { theme } from '../../theme';
 import { supabase } from '../../services/supabase';
 import { AdminService } from '../../services/api/admin';
 import { useAuthStore } from '../../store/authStore';
-import { formatQuantity } from '../../utils/helpers';
+import { formatQuantity, getLocalDateString } from '../../utils/helpers';
 import { Skeleton } from '../../components/Skeleton';
 import { EmptyState } from '../../components/EmptyState';
 import { ErrorBanner } from '../../components/ErrorBanner';
@@ -63,7 +63,7 @@ export const StockManagementScreen: React.FC<AdminScreenProps<'StockManagement'>
   
   const [collections, setCollections] = useState<StockCollection[]>([]);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(getLocalDateString());
   
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedCollection, setSelectedCollection] = useState<StockCollection | null>(null);
@@ -294,7 +294,7 @@ export const StockManagementScreen: React.FC<AdminScreenProps<'StockManagement'>
           onPress={() => {
             const d = new Date(selectedDate);
             d.setDate(d.getDate() - 1);
-            setSelectedDate(d.toISOString().split('T')[0]);
+            setSelectedDate(getLocalDateString(d));
           }}
         >
           <Text style={styles.dateButtonText}>←</Text>
@@ -311,7 +311,7 @@ export const StockManagementScreen: React.FC<AdminScreenProps<'StockManagement'>
           onPress={() => {
             const d = new Date(selectedDate);
             d.setDate(d.getDate() + 1);
-            setSelectedDate(d.toISOString().split('T')[0]);
+            setSelectedDate(getLocalDateString(d));
           }}
         >
           <Text style={styles.dateButtonText}>→</Text>

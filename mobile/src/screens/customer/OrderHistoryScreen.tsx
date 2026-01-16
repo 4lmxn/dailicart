@@ -12,7 +12,7 @@ import { AppBar } from '../../components/AppBar';
 import { theme, shadows, spacing, borderRadius } from '../../theme';
 import { supabase } from '../../services/supabase';
 import { useAuthStore } from '../../store/authStore';
-import { formatCurrency } from '../../utils/helpers';
+import { formatCurrency, getLocalDateString } from '../../utils/helpers';
 import { Skeleton } from '../../components/Skeleton';
 import { StatusBadge, PressableCard } from '../../components/ui';
 import { EmptyState } from '../../components/EmptyState';
@@ -53,7 +53,7 @@ export const OrderHistoryScreen: React.FC<OrderHistoryScreenProps> = ({ onBack }
       let userId = user.id;
       
       // Only fetch past orders (delivery_date <= today), not future scheduled ones
-      const today = new Date().toISOString().split('T')[0];
+      const today = getLocalDateString();
       
       // Fetch orders with user_id - include product info directly since schema has product_id on orders
       const { data: ordersData, error: ordersError } = await supabase

@@ -1,5 +1,6 @@
 import { supabase } from '../supabase';
 import { Distributor, DashboardStats } from './types';
+import { getLocalDateString, getLocalDateOffsetString } from '../../utils/helpers';
 
 export class AdminService {
   /**
@@ -32,7 +33,7 @@ export class AdminService {
         .eq('role', 'distributor');
 
       // Get today's deliveries
-      const today = new Date().toISOString().split('T')[0];
+      const today = getLocalDateString();
       const { data: deliveries } = await supabase
         .from('orders')
         .select('status')
@@ -453,7 +454,7 @@ export class AdminService {
    * Get stock collections for admin view
    */
   static async getStockCollections(date?: string) {
-    const targetDate = date || new Date().toISOString().split('T')[0];
+    const targetDate = date || getLocalDateString();
     // Use direct query with distributor details - join through distributors table
     const { data, error } = await supabase
       .from('distributor_stock_handover')
@@ -509,7 +510,7 @@ export class AdminService {
    * This creates a PENDING collection - admin must verify/give stock separately
    */
   static async generateStockCollection(distributorId: string, date?: string, stockItems?: Array<{product_id: string, quantity: number}>) {
-    const targetDate = date || new Date().toISOString().split('T')[0];
+    const targetDate = date || getLocalDateString();
     // Create or update distributor_stock_handover record
     // Explicitly set given_at to null so status stays "pending"
     return supabase
