@@ -16,6 +16,7 @@ import { theme } from '../../theme';
 import { useAuthStore } from '../../store/authStore';
 import { getAuthUserId } from '../../utils/auth';
 import { supabase } from '../../services/supabase';
+import { ErrorBanner } from '../../components/ErrorBanner';
 import type { DistributorScreenProps } from '../../navigation/types';
 
 const { width } = Dimensions.get('window');
@@ -187,15 +188,7 @@ export const AssignedBuildingsScreen = ({ navigation }: DistributorScreenProps<'
     <AppLayout>
       <AppBar title="My Buildings" onBack={() => navigation.goBack()} variant="surface" />
       
-      {error ? (
-        <TouchableOpacity style={styles.errorBanner} onPress={loadBuildings}>
-          <Text style={styles.errorIcon}>⚠️</Text>
-          <View style={styles.errorContent}>
-            <Text style={styles.errorText}>{error}</Text>
-            <Text style={styles.errorRetry}>Tap to retry</Text>
-          </View>
-        </TouchableOpacity>
-      ) : null}
+      {error && <ErrorBanner message={error} onRetry={loadBuildings} />}
 
       {buildings.length === 0 && !error ? (
         <View style={styles.emptyContainer}>

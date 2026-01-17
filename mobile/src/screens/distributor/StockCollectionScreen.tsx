@@ -19,6 +19,7 @@ import { supabase } from '../../services/supabase';
 import { getAuthUserId } from '../../utils/auth';
 import { formatQuantity, getLocalDateString } from '../../utils/helpers';
 import { EmptyState } from '../../components/EmptyState';
+import { ErrorBanner } from '../../components/ErrorBanner';
 import { useToast } from '../../components/Toast';
 import type { DistributorScreenProps } from '../../navigation/types';
 
@@ -430,15 +431,7 @@ export const StockCollectionScreen = ({ navigation }: DistributorScreenProps<'St
           </View>
         </View>
 
-        {error && (
-          <TouchableOpacity style={styles.errorBanner} onPress={loadData}>
-            <Text style={styles.errorIcon}>⚠️</Text>
-            <View style={styles.errorContent}>
-              <Text style={styles.errorText}>{error}</Text>
-              <Text style={styles.errorRetry}>Tap to retry</Text>
-            </View>
-          </TouchableOpacity>
-        )}
+        {error && <ErrorBanner message={error} onRetry={loadData} />}
 
         {!collection || collection.items.length === 0 ? (
           <View style={styles.emptyContainer}>

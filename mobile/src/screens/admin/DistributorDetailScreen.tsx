@@ -17,7 +17,7 @@ import type { AdminScreenProps } from '../../navigation/types';
 import { formatCurrency, getLocalDateString, getLocalDateOffsetString } from '../../utils/helpers';
 import { supabase } from '../../services/supabase';
 import { AdminService } from '../../services/api/admin';
-import Toast from 'react-native-toast-message';
+import { useToast } from '../../components/Toast';
 
 interface DistributorDetailScreenProps {}
 
@@ -76,6 +76,7 @@ interface StockMovement {
 
 export const DistributorDetailScreen: React.FC<AdminScreenProps<'DistributorDetail'>> = ({ route, navigation }) => {
   const { distributorId } = route.params;
+  const toast = useToast();
   const [loading, setLoading] = useState(true);
   const [distributor, setDistributor] = useState<DistributorData | null>(null);
   const [deliveryStats, setDeliveryStats] = useState<DeliveryStats | null>(null);
@@ -529,20 +530,12 @@ export const DistributorDetailScreen: React.FC<AdminScreenProps<'DistributorDeta
 
               if (error) throw error;
 
-              Toast.show({
-                type: 'success',
-                text1: 'Building removed',
-                text2: `${towerName} unassigned from ${distributor.name}`
-              });
+              toast.show(`Building removed - ${towerName} unassigned from ${distributor.name}`, { type: 'success' });
 
               await loadBuildingAssignments(distributor.id);
             } catch (error: any) {
               console.error('Error removing building:', error);
-              Toast.show({
-                type: 'error',
-                text1: 'Error',
-                text2: error.message || 'Failed to remove building assignment'
-              });
+              toast.show(error.message || 'Failed to remove building assignment', { type: 'error' });
             }
           }
         }

@@ -11,6 +11,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import type { DistributorScreenProps } from '../../navigation/types';
 import { Skeleton } from '../../components/Skeleton';
+import { ErrorBanner } from '../../components/ErrorBanner';
 import { getAuthUserId } from '../../utils/auth';
 import { getLocalDateString, getLocalDateOffsetString } from '../../utils/helpers';
 import { supabase } from '../../services/supabase';
@@ -245,14 +246,7 @@ export const EarningsScreen = ({ navigation }: DistributorScreenProps<'Earnings'
         </View>
 
         {/* Error Banner */}
-        {error && (
-          <View style={styles.errorBanner}>
-            <Text style={styles.errorText}>⚠️ {error}</Text>
-            <TouchableOpacity onPress={loadEarnings}>
-              <Text style={styles.retryText}>Retry</Text>
-            </TouchableOpacity>
-          </View>
-        )}
+        {error && <ErrorBanner message={error} onRetry={loadEarnings} />}
 
         {/* Daily Breakdown Chart */}
         {period !== 'today' && dailyEarnings.length > 0 && (

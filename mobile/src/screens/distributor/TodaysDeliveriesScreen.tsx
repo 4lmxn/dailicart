@@ -24,6 +24,7 @@ import { formatCurrency, formatQuantity, getLocalDateString } from '../../utils/
 import { getAuthUserId } from '../../utils/auth';
 import { SkeletonList } from '../../components/Skeleton';
 import { EmptyState } from '../../components/EmptyState';
+import { ErrorBanner } from '../../components/ErrorBanner';
 import { useToast } from '../../components/Toast';
 
 // Enable LayoutAnimation on Android
@@ -669,13 +670,7 @@ export function TodaysDeliveriesScreen() {
         </View>
 
         {error && (
-          <TouchableOpacity style={styles.errorBanner} onPress={fetchTodaysDeliveries}>
-            <Text style={styles.errorIcon}>⚠️</Text>
-            <View style={styles.errorContent}>
-              <Text style={styles.errorText}>{error}</Text>
-              <Text style={styles.errorRetry}>Tap to retry</Text>
-            </View>
-          </TouchableOpacity>
+          <ErrorBanner message={error} onRetry={fetchTodaysDeliveries} />
         )}
 
         {loading ? (
@@ -864,35 +859,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#64748B',
     marginTop: 4,
-  },
-
-  // Error Banner
-  errorBanner: {
-    backgroundColor: '#FEF2F2',
-    borderRadius: 12,
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#FECACA',
-  },
-  errorIcon: {
-    fontSize: 24,
-    marginRight: 12,
-  },
-  errorContent: {
-    flex: 1,
-  },
-  errorText: {
-    fontSize: 14,
-    color: '#DC2626',
-    fontWeight: '500',
-  },
-  errorRetry: {
-    fontSize: 12,
-    color: '#DC2626',
-    marginTop: 2,
   },
 
   // Empty State

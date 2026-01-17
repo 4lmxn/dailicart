@@ -17,6 +17,7 @@ import { MINIMUM_BALANCE } from '../../constants';
 import { supabase } from '../../services/supabase';
 import { formatCurrency, formatQuantity, getLocalDateString } from '../../utils/helpers';
 import { useToast } from '../../components/Toast';
+import { ErrorBanner } from '../../components/ErrorBanner';
 import { getAuthUserId } from '../../utils/auth';
 import type { DistributorScreenProps } from '../../navigation/types';
 
@@ -488,15 +489,7 @@ export const BuildingDeliveriesScreen = ({ route, navigation }: DistributorScree
               </TouchableOpacity>
             </View>
 
-            {error && (
-              <TouchableOpacity style={styles.errorBanner} onPress={loadDeliveries}>
-                <Text style={styles.errorIcon}>⚠️</Text>
-                <View style={styles.errorContent}>
-                  <Text style={styles.errorText}>{error}</Text>
-                  <Text style={styles.errorRetry}>Tap to retry</Text>
-                </View>
-              </TouchableOpacity>
-            )}
+            {error && <ErrorBanner message={error} onRetry={loadDeliveries} />}
           </>
         }
         ListEmptyComponent={

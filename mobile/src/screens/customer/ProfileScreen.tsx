@@ -13,6 +13,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppLayout } from '../../components/AppLayout';
 import { AppBar } from '../../components/AppBar';
+import { ErrorBanner } from '../../components/ErrorBanner';
 import { theme } from '../../theme';
 import { useAuthStore } from '../../store/authStore';
 import { supabase } from '../../services/supabase';
@@ -442,14 +443,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack }) => {
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false}>
-              {addressError && (
-                <View style={styles.errorBanner}>
-                  <Text style={styles.errorText}>⚠️ {addressError}</Text>
-                  <TouchableOpacity onPress={loadSocietiesForAddress}>
-                    <Text style={styles.errorRetry}>Retry</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
+              {addressError && <ErrorBanner message={addressError} onRetry={loadSocietiesForAddress} />}
 
               {/* Society Selection */}
               <View style={styles.inputGroup}>
@@ -833,29 +827,6 @@ const styles = StyleSheet.create({
   },
 
   // Address Selection Styles
-  errorBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#FEF2F2',
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#FECACA',
-  },
-  errorText: {
-    fontSize: 14,
-    color: '#DC2626',
-    fontWeight: '500',
-    flex: 1,
-  },
-  errorRetry: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#0D9488',
-    marginLeft: 12,
-  },
   loadingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
