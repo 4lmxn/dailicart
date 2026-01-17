@@ -7,12 +7,10 @@ import { AuthNavigator } from './AuthNavigator';
 import { CustomerNavigator } from './CustomerNavigator';
 import { AdminNavigator } from './AdminNavigator';
 import { DistributorNavigator } from './DistributorNavigator';
-import { useAuthStore } from '../store/authStore';
 import { RoleGate } from './RoleGate';
 import OnboardingScreen from '../screens/auth/OnboardingScreen';
 import RoleSelectorScreen from '../screens/dev/RoleSelectorScreen';
 import UserPickerScreen from '../screens/dev/UserPickerScreen';
-import { Platform } from 'react-native';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 

@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useCallback, useState, useEffect } from 'react';
 import { Animated, View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { theme } from '../theme';
 
 interface ToastMessage {
   id: string;

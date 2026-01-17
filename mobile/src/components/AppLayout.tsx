@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, StyleSheet, StatusBar, ViewStyle } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets, Edge } from 'react-native-safe-area-context';
+import { SafeAreaView, Edge, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme } from '../theme';
 
 interface AppLayoutProps {
@@ -58,9 +58,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
   style,
   statusBarStyle = 'light-content',
   statusBarBackgroundColor,
-  noTopSafeArea = true,
 }) => {
-  const insets = useSafeAreaInsets();
   
   return (
     <SafeAreaView 

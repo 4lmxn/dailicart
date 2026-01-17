@@ -133,7 +133,7 @@ export const ActivationCodesScreen: React.FC<AdminScreenProps<'ActivationCodes'>
     try {
       await Clipboard.setString(code);
       showToast('📋 Code copied to clipboard!', { type: 'success' });
-    } catch (error) {
+    } catch (_error) {
       showToast('Failed to copy', { type: 'error' });
     }
   };
@@ -169,7 +169,7 @@ export const ActivationCodesScreen: React.FC<AdminScreenProps<'ActivationCodes'>
               
               showToast('Code deleted', { type: 'success' });
               loadCodes();
-            } catch (error) {
+            } catch (_error) {
               showToast('Failed to delete code', { type: 'error' });
             }
           },

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, PanResponder, Animated } from 'react-native';
+import { StyleSheet, PanResponder, Animated } from 'react-native';
 
 interface SwipeableScreenProps {
   children: React.ReactNode;

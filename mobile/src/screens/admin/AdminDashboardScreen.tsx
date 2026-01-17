@@ -17,7 +17,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { AppLayout } from '../../components/AppLayout';
 import { VictoryPie, VictoryChart, VictoryLine, VictoryBar, VictoryTheme, VictoryAxis } from 'victory-native';
 import { useToast } from '../../components/Toast';
-import { Skeleton, SkeletonLineGroup } from '../../components/Skeleton';
 import { useAuthStore } from '../../store/authStore';
 import { theme } from '../../theme';
 import { AppBar } from '../../components/AppBar';
@@ -25,7 +24,6 @@ import { formatCurrency, getLocalDateString, getLocalDateOffsetString } from '..
 import { ProductService } from '../../services/api/products';
 import { useAnalyticsStore } from '../../store/analyticsStore';
 import { CustomerAdminService } from '../../services/api/customers';
-import { AdminService } from '../../services/api/admin';
 import { supabase } from '../../services/supabase';
 import { useAdminDashboardStore } from '../../store/adminDashboardStore';
 import { useNavigation } from '@react-navigation/native';
@@ -88,7 +86,6 @@ export const AdminDashboardScreen: React.FC = () => {
   
   // Navigation state for detail screens
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
-  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [selectedDistributorId, setSelectedDistributorId] = useState<string | null>(null);
   const [selectedSubscriptionId, setSelectedSubscriptionId] = useState<string | null>(null);
   const [selectedSocietyId, setSelectedSocietyId] = useState<string | null>(null);
@@ -113,12 +110,7 @@ export const AdminDashboardScreen: React.FC = () => {
   const [walletModalCustomerId, setWalletModalCustomerId] = useState<string | null>(null);
   const [walletAmount, setWalletAmount] = useState('200');
   const [walletNote, setWalletNote] = useState('Admin recharge');
-  const [lowStock, setLowStock] = useState<any[]>([]);
-  const [churnRate, setChurnRate] = useState<number>(0);
-  const [newSignups7d, setNewSignups7d] = useState<number>(0);
-  const [globalQuery, setGlobalQuery] = useState('');
-  const [globalResults, setGlobalResults] = useState<{ customers: any[]; products: any[]; subscriptions: any[] }>({ customers: [], products: [], subscriptions: [] });
-  const [searching, setSearching] = useState(false);
+
   // Analytics store hook
   const {
     revenueTrend,
@@ -285,65 +277,6 @@ export const AdminDashboardScreen: React.FC = () => {
     }
   };
 
-  const runGlobalSearch = async (query: string) => {
-    if (!query.trim()) {
-      setGlobalResults({ customers: [], products: [], subscriptions: [] });
-      return;
-    }
-    try {
-      setSearching(true);
-      const searchTerm = `%${query}%`;
-      
-      // Search customers
-      const { data: customers } = await supabase
-        .from('customers')
-        .select('id, user_id, users!inner(phone, full_name)')
-        .or(`users.full_name.ilike.${searchTerm},users.phone.ilike.${searchTerm}`)
-        .limit(10);
-      
-      // Search products
-      const { data: products } = await supabase
-        .from('products')
-        .select('id, name, sku')
-        .or(`name.ilike.${searchTerm},sku.ilike.${searchTerm}`)
-        .eq('is_active', true)
-        .limit(10);
-      
-      // Search subscriptions (by customer name or product)
-      const { data: subscriptions } = await supabase
-        .from('subscriptions')
-        .select('id, status, products(name), users!inner(full_name)')
-        .or(`users.full_name.ilike.${searchTerm},products.name.ilike.${searchTerm}`)
-        .limit(10);
-      
-      setGlobalResults({
-        customers: (customers || []).map((c: any) => ({
-          id: c.id,
-          user_id: c.user_id,
-          name: c.users?.full_name || 'Unknown',
-          phone: c.users?.phone
-        })),
-        products: products || [],
-        subscriptions: subscriptions || [],
-      });
-    } catch (e) {
-      console.error('Global search error', e);
-    } finally {
-      setSearching(false);
-    }
-  };
-
-  useEffect(() => {
-    const h = setTimeout(() => {
-      if (globalQuery.length >= 2) {
-        runGlobalSearch(globalQuery);
-      } else {
-        setGlobalResults({ customers: [], products: [], subscriptions: [] });
-      }
-    }, 300);
-    return () => clearTimeout(h);
-  }, [globalQuery]);
-
   // Load analytics when tab activated with caching
   useEffect(() => {
     if (activeTab === 'analytics') {
@@ -470,32 +403,6 @@ export const AdminDashboardScreen: React.FC = () => {
 
   const handleLogout = async () => {
     await logout();
-  };
-
-  const handleQuickAction = (action: string) => {
-    switch(action) {
-      case 'customers':
-        setActiveTab('customers');
-        break;
-      case 'distributors':
-        setActiveTab('distributors');
-        break;
-      case 'products':
-        setActiveTab('products');
-        break;
-      case 'subscriptions':
-        setActiveTab('subscriptions');
-        break;
-      case 'analytics':
-        setActiveTab('analytics');
-        break;
-      case 'stock':
-        navigation.navigate('StockManagement');
-        break;
-      case 'notifications':
-        Alert.alert('Send Notifications', 'Notification center coming soon!');
-        break;
-    }
   };
 
   const renderDashboard = () => (
@@ -968,7 +875,7 @@ export const AdminDashboardScreen: React.FC = () => {
             key={product.id}
             style={styles.listCard}
             onPress={() => {
-              setSelectedProductId(product.id);
+              setSelectedProduct(product);
               setActiveScreen('productManagement');
             }}
           >
@@ -1792,7 +1699,7 @@ export const AdminDashboardScreen: React.FC = () => {
           <ProductManagementScreen
             onClose={() => {
               setActiveScreen('main');
-              setSelectedProductId(null);
+              setSelectedProduct(null);
               loadProducts(); // Refresh products list
             }}
           />
