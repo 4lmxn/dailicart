@@ -600,15 +600,15 @@ CREATE POLICY "rate_limits_admin_only" ON rate_limits
     WITH CHECK (is_admin());
 
 -- =============================================================================
--- OTP REQUESTS (Service use - handled by auth functions)
+-- OTP REQUESTS (Admin only - contains sensitive data)
 -- =============================================================================
 
-DROP POLICY IF EXISTS "otp_requests_own" ON otp_requests;
+DROP POLICY IF EXISTS "otp_requests_admin_only" ON otp_requests;
 
--- Users can see their own OTP requests (for debugging)
-CREATE POLICY "otp_requests_own" ON otp_requests
+-- Only admins can view OTP requests (for debugging/support)
+CREATE POLICY "otp_requests_admin_only" ON otp_requests
     FOR SELECT TO authenticated
-    USING (user_id = auth.uid());
+    USING (is_admin());
 
 -- =============================================================================
 -- GRANT EXECUTE ON HELPER FUNCTIONS
