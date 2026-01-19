@@ -466,17 +466,22 @@ CREATE POLICY "attachments_insert_own" ON ticket_attachments
     );
 
 -- =============================================================================
--- PHOTO PROOFS (Distributor-specific)
+-- PHOTO PROOFS (User-specific)
 -- =============================================================================
 
-DROP POLICY IF EXISTS "photo_proofs_distributor_own" ON photo_proofs;
+DROP POLICY IF EXISTS "photo_proofs_select_own" ON photo_proofs;
+DROP POLICY IF EXISTS "photo_proofs_insert_own" ON photo_proofs;
 DROP POLICY IF EXISTS "photo_proofs_admin_all" ON photo_proofs;
 
--- Distributors can see/create their own proofs
-CREATE POLICY "photo_proofs_distributor_own" ON photo_proofs
-    FOR ALL TO authenticated
-    USING (is_distributor() AND distributor_id = get_distributor_id())
-    WITH CHECK (distributor_id = get_distributor_id());
+-- Users can see their own proofs
+CREATE POLICY "photo_proofs_select_own" ON photo_proofs
+    FOR SELECT TO authenticated
+    USING (uploaded_by = auth.uid());
+
+-- Users can create their own proofs
+CREATE POLICY "photo_proofs_insert_own" ON photo_proofs
+    FOR INSERT TO authenticated
+    WITH CHECK (uploaded_by = auth.uid());
 
 -- Admins have full access
 CREATE POLICY "photo_proofs_admin_all" ON photo_proofs
