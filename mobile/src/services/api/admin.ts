@@ -1,6 +1,25 @@
 import { supabase } from '../supabase';
 import { Distributor, DashboardStats } from './types';
 import { getLocalDateString, getLocalDateOffsetString } from '../../utils/helpers';
+import { z } from 'zod';
+
+// =============================================================================
+// VALIDATION SCHEMAS
+// =============================================================================
+
+const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format (YYYY-MM-DD)');
+const uuidSchema = z.string().uuid('Invalid UUID');
+
+const generateOrdersSchema = z.object({
+  start: dateSchema.optional(),
+  end: dateSchema.optional(),
+  user_id: uuidSchema.optional(),
+}).refine(data => {
+  if (data.start && data.end) {
+    return new Date(data.start) <= new Date(data.end);
+  }
+  return true;
+}, { message: 'Start date must be before or equal to end date' });
 
 export class AdminService {
   /**
@@ -98,8 +117,11 @@ export class AdminService {
    * @param user_id - The user's ID (users.id)
    */
   static async generateOrders(params: { start?: string; end?: string; user_id?: string }) {
-    const start = params.start || new Date().toISOString().slice(0, 10);
-    const end = params.end || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    // Validate input
+    const validated = generateOrdersSchema.parse(params);
+    
+    const start = validated.start || getLocalDateString();
+    const end = validated.end || getLocalDateOffsetString(30);
 
     // Try Edge Function first
     try {

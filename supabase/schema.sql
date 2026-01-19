@@ -1263,17 +1263,17 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- =============================================================================
--- DISABLE RLS FOR DEVELOPMENT
+-- ROW LEVEL SECURITY (RLS) - PRODUCTION MODE
 -- =============================================================================
-
-DO $$
-DECLARE
-    r RECORD;
-BEGIN
-    FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = 'public') LOOP
-        EXECUTE 'ALTER TABLE ' || quote_ident(r.tablename) || ' DISABLE ROW LEVEL SECURITY';
-    END LOOP;
-END$$;
+-- 
+-- RLS is NOW ENABLED by default. For local development only, you can disable
+-- by running supabase/disable_rls_dev.sql manually.
+--
+-- After applying this schema, run:
+--   1. production_security_enable.sql - Enables RLS on all tables
+--   2. add_comprehensive_rls_policies.sql - Creates access policies
+--
+-- =============================================================================
 
 -- =============================================================================
 -- SUCCESS MESSAGE
@@ -1317,9 +1317,10 @@ DO $$ BEGIN
     RAISE NOTICE '   • PO auto-numbering (PO-YYYYMMDD-XXXXXX)';
     RAISE NOTICE '';
     RAISE NOTICE '⚠️  BEFORE GOING LIVE:';
-    RAISE NOTICE '   1. Enable Row Level Security (RLS)';
-    RAISE NOTICE '   2. Set up Supabase Storage buckets for photos';
-    RAISE NOTICE '   3. Configure backup policies';
-    RAISE NOTICE '   4. Set up monitoring/alerting';
+    RAISE NOTICE '   1. Run: production_security_enable.sql';
+    RAISE NOTICE '   2. Run: add_comprehensive_rls_policies.sql';
+    RAISE NOTICE '   3. Set up Supabase Storage buckets for photos';
+    RAISE NOTICE '   4. Configure backup policies';
+    RAISE NOTICE '   5. Set up monitoring/alerting';
     RAISE NOTICE '═══════════════════════════════════════════════════════════════════';
 END $$;

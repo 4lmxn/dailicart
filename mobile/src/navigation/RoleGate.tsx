@@ -24,7 +24,8 @@ export const RoleGate: React.FC<RoleGateProps> = ({
   onAuth,
 }) => {
   const { isAuthenticated, user, initializing } = useAuthStore();
-  const forceRole = (process.env.EXPO_PUBLIC_FORCE_ROLE || '').toLowerCase();
+  // SECURITY: Only allow role override in development mode
+  const forceRole = __DEV__ ? (process.env.EXPO_PUBLIC_FORCE_ROLE || '').toLowerCase() : '';
 
   const [checkingAddress, setCheckingAddress] = useState(false);
 

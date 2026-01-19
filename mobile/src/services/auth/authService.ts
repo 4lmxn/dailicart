@@ -1,10 +1,10 @@
 import { supabase } from '../supabase';
 import * as Linking from 'expo-linking';
 import { Platform } from 'react-native';
-import { makeRedirectUri } from 'expo-auth-session';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_KEYS } from '../../constants';
 import { sendOtpSchema, verifyOtpSchema, safeValidate } from '../../utils/validation';
+import { checkRateLimit } from '../../utils/rateLimit';
 
 export interface AuthUser {
   id: string;
@@ -198,6 +198,16 @@ export class AuthService {
         return { success: false, error: validation.error };
       }
 
+      // Rate limit check - prevent OTP spam
+      const rateLimitCheck = checkRateLimit('otp:send', rawPhone);
+      if (!rateLimitCheck.allowed) {
+        const waitSeconds = Math.ceil((rateLimitCheck.retryAfterMs || 0) / 1000);
+        return {
+          success: false,
+          error: `Too many OTP requests. Please try again in ${waitSeconds} seconds.`,
+        };
+      }
+
       // Format phone number (ensure +91 prefix for India)
       const formattedPhone = phone.startsWith('+') ? phone : `+91${phone}`;
 
@@ -240,6 +250,16 @@ export class AuthService {
       const validation = safeValidate(verifyOtpSchema, { phone: rawPhone, otp });
       if (!validation.success) {
         return { success: false, error: validation.error };
+      }
+
+      // Rate limit check - prevent brute force OTP guessing
+      const rateLimitCheck = checkRateLimit('otp:verify', rawPhone);
+      if (!rateLimitCheck.allowed) {
+        const waitSeconds = Math.ceil((rateLimitCheck.retryAfterMs || 0) / 1000);
+        return {
+          success: false,
+          error: `Too many verification attempts. Please try again in ${waitSeconds} seconds.`,
+        };
       }
 
       const formattedPhone = phone.startsWith('+') ? phone : `+91${phone}`;

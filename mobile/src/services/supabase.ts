@@ -18,9 +18,9 @@ export const supabase = createClient(
   }
 );
 
-// Expose globally in web builds for console diagnostics
-if (typeof window !== 'undefined') {
-  // @ts-ignore
+// Expose globally in web builds for console diagnostics - DEV ONLY
+if (__DEV__ && typeof window !== 'undefined') {
+  // @ts-ignore - Safe: only exposed in development
   (window as any).supabase = supabase;
 }
 

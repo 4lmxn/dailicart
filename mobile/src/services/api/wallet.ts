@@ -6,6 +6,7 @@ import {
   walletTopupSchema,
   safeValidate 
 } from '../../utils/validation';
+import { checkRateLimit } from '../../utils/rateLimit';
 
 // Generate a unique idempotency key
 function generateIdempotencyKey(prefix: string): string {
@@ -261,6 +262,13 @@ export class WalletService {
       throw new Error(`Invalid amount: ${amountValidation.error}`);
     }
 
+    // Rate limit check for wallet operations
+    const rateLimitCheck = checkRateLimit('wallet:topup', userId);
+    if (!rateLimitCheck.allowed) {
+      const waitSeconds = Math.ceil((rateLimitCheck.retryAfterMs || 0) / 1000);
+      throw new Error(`Too many wallet operations. Please try again in ${waitSeconds} seconds.`);
+    }
+
     try {
       const key = idempotencyKey || generateIdempotencyKey('CREDIT');
 
@@ -307,6 +315,13 @@ export class WalletService {
     const amountValidation = safeValidate(amountSchema, amount);
     if (!amountValidation.success) {
       throw new Error(`Invalid amount: ${amountValidation.error}`);
+    }
+
+    // Rate limit check for wallet operations
+    const rateLimitCheck = checkRateLimit('wallet:debit', userId);
+    if (!rateLimitCheck.allowed) {
+      const waitSeconds = Math.ceil((rateLimitCheck.retryAfterMs || 0) / 1000);
+      throw new Error(`Too many wallet operations. Please try again in ${waitSeconds} seconds.`);
     }
 
     try {

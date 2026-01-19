@@ -63,6 +63,7 @@ export async function markNoDelivery(
   photoProofId?: string
 ) {
   // Schema uses 'missed' status and skip_reason for undelivered orders
+  // SECURITY: Verify the distributor is assigned to this order
   const { data, error } = await supabase
     .from('orders')
     .update({ 
@@ -70,6 +71,7 @@ export async function markNoDelivery(
       skip_reason: reason,
     })
     .eq('id', orderId)
+    .eq('assigned_distributor_id', distributorId) // Authorization check
     .select('id, status, skip_reason')
     .single();
 
