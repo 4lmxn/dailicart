@@ -437,7 +437,7 @@ CREATE POLICY "messages_insert_own" ON ticket_messages
     FOR INSERT TO authenticated
     WITH CHECK (
         ticket_id IN (SELECT id FROM support_tickets WHERE user_id = auth.uid())
-        AND sender_type = 'customer'
+        AND sender_role = 'customer'
     );
 
 -- =============================================================================
