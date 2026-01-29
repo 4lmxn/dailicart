@@ -4,6 +4,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.43.1';
 import { corsHeaders, handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
+import { checkRateLimit, rateLimitResponse } from '../_shared/rateLimit.ts';
 
 Deno.serve(async (req) => {
   // Handle CORS preflight
@@ -30,6 +31,12 @@ Deno.serve(async (req) => {
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     if (authError || !user) {
       return errorResponse('Invalid or expired token', 401);
+    }
+
+    // Check rate limit (very strict - only 2 per minute for this heavy operation)
+    const rateLimitResult = await checkRateLimit(supabase, user.id, 'orders:generate');
+    if (!rateLimitResult.allowed) {
+      return rateLimitResponse(60);
     }
 
     // Check if user is admin

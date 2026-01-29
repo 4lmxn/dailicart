@@ -1,4 +1,15 @@
 {
   "typescript.tsserver.experimental.enableProjectDiagnostics": false,
-  "typescript.disableAutomaticTypeAcquisition": true
+  "typescript.disableAutomaticTypeAcquisition": true,
+  
+  // Enable Deno for Edge Functions only
+  "deno.enable": true,
+  "deno.enablePaths": ["supabase/functions"],
+  "deno.lint": true,
+  "deno.unstable": true,
+  
+  // Disable TS for Deno paths
+  "[typescript]": {
+    "editor.defaultFormatter": "denoland.vscode-deno"
+  }
 }

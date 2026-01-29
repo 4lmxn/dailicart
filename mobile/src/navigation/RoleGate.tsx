@@ -14,7 +14,7 @@ interface RoleGateProps {
 
 /**
  * Central role-based router. Decides which stack to show based on auth + role.
- * Supports dev override via EXPO_PUBLIC_FORCE_ROLE.
+ * Role is determined by the database - admins can change user roles in Supabase.
  */
 export const RoleGate: React.FC<RoleGateProps> = ({
   onCustomer,
@@ -24,9 +24,6 @@ export const RoleGate: React.FC<RoleGateProps> = ({
   onAuth,
 }) => {
   const { isAuthenticated, user, initializing } = useAuthStore();
-  // SECURITY: Only allow role override in development mode
-  const forceRole = __DEV__ ? (process.env.EXPO_PUBLIC_FORCE_ROLE || '').toLowerCase() : '';
-
   const [checkingAddress, setCheckingAddress] = useState(false);
 
   useEffect(() => {
@@ -39,17 +36,17 @@ export const RoleGate: React.FC<RoleGateProps> = ({
         return;
       }
 
-      if (forceRole === 'customer') { onCustomer(); return; }
-      if (forceRole === 'admin') { onAdmin(); return; }
-      if (forceRole === 'distributor') { onDistributor(); return; }
-
       const role = user?.role;
       if (!role) { onOnboarding(); return; }
 
       // For customers, ensure at least one canonical address exists or go to onboarding.
       if (role === 'customer') {
         setCheckingAddress(true);
-        const { data, error } = await supabase.from('addresses').select('id').limit(1);
+        const { data, error } = await supabase
+          .from('addresses')
+          .select('id')
+          .eq('user_id', user.id)
+          .limit(1);
         if (!cancelled) {
           setCheckingAddress(false);
           if (error) {
@@ -74,7 +71,7 @@ export const RoleGate: React.FC<RoleGateProps> = ({
     };
     run();
     return () => { cancelled = true; };
-  }, [isAuthenticated, user, initializing, forceRole, onCustomer, onAdmin, onDistributor, onOnboarding, onAuth]);
+  }, [isAuthenticated, user, initializing, onCustomer, onAdmin, onDistributor, onOnboarding, onAuth]);
 
   if (initializing || checkingAddress) {
     return (

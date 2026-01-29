@@ -37,14 +37,15 @@ export const useAdminDashboardStore = create<AdminDashboardState>((set, get) => 
   fetchDashboard: async (date?: string) => {
     try {
       set({ loading: true, error: null });
-      // Fallback lightweight aggregation (legacy RPC removed)
-      const targetDate = date || new Date().toISOString().slice(0, 10);
+      // Use local date helper to avoid timezone issues
+      const { getLocalDateString } = await import('../utils/helpers');
+      const targetDate = date || getLocalDateString();
 
       // Calculate month start for monthly revenue
       const monthStart = new Date();
       monthStart.setDate(1);
       monthStart.setHours(0, 0, 0, 0);
-      const monthStartStr = monthStart.toISOString().slice(0, 10);
+      const monthStartStr = getLocalDateString(monthStart);
 
       const [ordersRes, allOrdersRes, subsRes, custRes, distRes, lowWalletRes] = await Promise.all([
         supabase.from('orders').select('status,total_amount,delivery_date,assigned_distributor_id').eq('delivery_date', targetDate),

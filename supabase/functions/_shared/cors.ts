@@ -1,21 +1,39 @@
 // Shared CORS headers for all Edge Functions
-// Set ALLOWED_ORIGINS in your Supabase Edge Function secrets
-// For multiple origins: "https://app1.com,https://app2.com"
+// Production domain: dailicart.in
+
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+
+const ALLOWED_ORIGINS = [
+  'https://dailicart.in',
+  'https://www.dailicart.in',
+  'https://app.dailicart.in',
+];
+
+// Check if we're in development mode
+const isDevelopment = () => {
+  const env = Deno.env.get('ENVIRONMENT') || Deno.env.get('DENO_ENV');
+  return env === 'development' || env === 'local';
+};
 
 const getAllowedOrigin = (requestOrigin: string | null): string => {
-  const allowedOrigins = Deno.env.get('ALLOWED_ORIGINS') || '*';
+  // Check environment override first
+  const envOrigins = Deno.env.get('ALLOWED_ORIGINS');
+  const origins = envOrigins ? envOrigins.split(',').map(o => o.trim()) : ALLOWED_ORIGINS;
   
-  // In development, allow all
-  if (allowedOrigins === '*') return '*';
-  
-  // Check if request origin is in allowed list
-  const origins = allowedOrigins.split(',').map(o => o.trim());
+  // If origin is provided and matches allowed list, return it
   if (requestOrigin && origins.includes(requestOrigin)) {
     return requestOrigin;
   }
   
-  // Return first allowed origin as fallback
-  return origins[0] || '*';
+  // Allow localhost only in development mode
+  if (requestOrigin && requestOrigin.includes('localhost') && isDevelopment()) {
+    return requestOrigin;
+  }
+  
+  // SECURITY: Never return '*' in production
+  // If no matching origin, return the primary allowed origin
+  // This will cause CORS to fail for unauthorized origins (which is correct)
+  return origins[0] || 'https://dailicart.in';
 };
 
 export const corsHeaders = {

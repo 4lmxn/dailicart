@@ -79,12 +79,9 @@ export type DistributorScreenProps<T extends keyof DistributorStackParamList> = 
 
 // Root Stack
 export type RootStackParamList = {
-  DevSelector: undefined;
-  UserPicker: undefined;
   Auth: undefined;
   Customer: undefined;
   Admin: undefined;
   Distributor: undefined;
   Onboarding: undefined;
-  RoleSelector?: undefined;
 };

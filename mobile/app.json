@@ -1,12 +1,12 @@
 {
   "expo": {
-    "name": "mobile",
-    "slug": "mobile",
+    "name": "DailiCart",
+    "slug": "dailicart",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "scheme": "idaily",
+    "scheme": "dailicart",
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",

@@ -4,7 +4,7 @@ export const config = {
   api: {
     baseURL: __DEV__ 
       ? 'http://localhost:3000/api' 
-      : 'https://api.idaily.app/api',
+      : 'https://api.dailicart.in/api',
     timeout: 30000,
   },
 
@@ -29,10 +29,10 @@ export const config = {
 
   // App Configuration
   app: {
-    name: 'iDaily',
+    name: 'DailiCart',
     version: '1.0.0',
-    customerAppId: 'com.idaily.customer',
-    distributorAppId: 'com.idaily.distributor',
+    customerAppId: 'in.dailicart.app',
+    distributorAppId: 'in.dailicart.distributor',
   },
 
   // Features

@@ -128,3 +128,64 @@ export function getRateLimitStatus(action: string, identifier: string): RateLimi
   const key = `${action}:${identifier}`;
   return rateLimitStore.get(key);
 }
+
+/**
+ * Get human-readable wait time string
+ */
+export function formatWaitTime(ms: number): string {
+  const seconds = Math.ceil(ms / 1000);
+  if (seconds < 60) {
+    return `${seconds} second${seconds !== 1 ? 's' : ''}`;
+  }
+  const minutes = Math.ceil(seconds / 60);
+  return `${minutes} minute${minutes !== 1 ? 's' : ''}`;
+}
+
+/**
+ * Create a rate-limited wrapper for any async function
+ * Use this for wrapping API calls that don't have built-in rate limiting
+ * 
+ * @example
+ * const rateLimitedFetch = createRateLimitedFunction('api:read', userId);
+ * const data = await rateLimitedFetch(() => fetchProducts());
+ */
+export function createRateLimitedFunction<T>(
+  action: string,
+  identifier: string
+): (fn: () => Promise<T>) => Promise<T> {
+  return async (fn: () => Promise<T>): Promise<T> => {
+    return withRateLimit(action, identifier, fn);
+  };
+}
+
+/**
+ * Check if currently rate limited without incrementing counter
+ * Useful for UI to show/hide buttons or show warnings
+ */
+export function isRateLimited(action: string, identifier: string): boolean {
+  const key = `${action}:${identifier}`;
+  const entry = rateLimitStore.get(key);
+  const now = Date.now();
+  
+  if (entry?.blockedUntil && entry.blockedUntil > now) {
+    return true;
+  }
+  
+  return false;
+}
+
+/**
+ * Get remaining time until rate limit resets (in ms)
+ * Returns 0 if not rate limited
+ */
+export function getRateLimitResetTime(action: string, identifier: string): number {
+  const key = `${action}:${identifier}`;
+  const entry = rateLimitStore.get(key);
+  const now = Date.now();
+  
+  if (entry?.blockedUntil && entry.blockedUntil > now) {
+    return entry.blockedUntil - now;
+  }
+  
+  return 0;
+}

@@ -1,5 +1,5 @@
 // App Constants
-export const APP_NAME = 'iDaily';
+export const APP_NAME = 'DailiCart';
 export const APP_TAGLINE = 'Fresh Milk, Every Morning';
 
 // Date Formats
@@ -114,11 +114,11 @@ export const SUCCESS_MESSAGES = {
 
 // Storage Keys (AsyncStorage)
 export const STORAGE_KEYS = {
-  AUTH_TOKEN: '@iDaily:authToken',
-  REFRESH_TOKEN: '@iDaily:refreshToken',
-  USER_DATA: '@iDaily:userData',
-  OFFLINE_QUEUE: '@iDaily:offlineQueue',
-  LAST_SYNC: '@iDaily:lastSync',
+  AUTH_TOKEN: '@DailiCart:authToken',
+  REFRESH_TOKEN: '@DailiCart:refreshToken',
+  USER_DATA: '@DailiCart:userData',
+  OFFLINE_QUEUE: '@DailiCart:offlineQueue',
+  LAST_SYNC: '@DailiCart:lastSync',
 };
 
 // Notification Types

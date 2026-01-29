@@ -255,7 +255,7 @@ export const OnboardingScreen: React.FC<Props> = ({ onComplete }) => {
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         });
-        showToast('🎉 Welcome to iDaily!', { type: 'success' });
+        showToast('🎉 Welcome to DailiCart!', { type: 'success' });
         onComplete?.();
       } else if (role === 'distributor') {
         // Create user and distributor with ID proof
@@ -300,7 +300,7 @@ export const OnboardingScreen: React.FC<Props> = ({ onComplete }) => {
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         });
-        showToast('🎉 Welcome to iDaily! Awaiting admin approval.', { type: 'success' });
+        showToast('🎉 Welcome to DailiCart! Awaiting admin approval.', { type: 'success' });
         onComplete?.();
       }
     } catch (e: any) {
@@ -330,7 +330,7 @@ export const OnboardingScreen: React.FC<Props> = ({ onComplete }) => {
             </Text>
           </View>
           <Text style={styles.headerTitle}>
-            {currentStep === 'role' ? 'Welcome to iDaily!' : 
+            {currentStep === 'role' ? 'Welcome to DailiCart!' : 
              currentStep === 'personal' ? 'Personal Info' :
              currentStep === 'address' ? (role === 'customer' ? 'Your Address' : 'Distributor Details') :
              'Almost Done!'}
@@ -376,7 +376,7 @@ export const OnboardingScreen: React.FC<Props> = ({ onComplete }) => {
     <Animated.View style={[styles.stepContainer, { transform: [{ translateX: slideAnim }] }]}>
       <View style={styles.contentCard}>
         <Text style={styles.cardTitle}>Choose Your Role</Text>
-        <Text style={styles.cardSubtitle}>Select how you'd like to use iDaily</Text>
+        <Text style={styles.cardSubtitle}>Select how you'd like to use DailiCart</Text>
         
         <View style={styles.roleCardsContainer}>
           <TouchableOpacity

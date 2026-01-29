@@ -27,11 +27,11 @@ function test(urlStr: string): void {
 
 function main() {
   const examples = [
-    'idaily://customer/products',
-    'idaily://admin/customers/abc123',
-    'idaily://admin/distributors/dist-9',
-    'idaily://admin/subscriptions/sub-7',
-    'idaily://distributor/buildings/B42',
+    'dailicart://customer/products',
+    'dailicart://admin/customers/abc123',
+    'dailicart://admin/distributors/dist-9',
+    'dailicart://admin/subscriptions/sub-7',
+    'dailicart://distributor/buildings/B42',
   ];
   examples.forEach(test);
 }

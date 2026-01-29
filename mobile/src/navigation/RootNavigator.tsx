@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -9,19 +9,13 @@ import { AdminNavigator } from './AdminNavigator';
 import { DistributorNavigator } from './DistributorNavigator';
 import { RoleGate } from './RoleGate';
 import OnboardingScreen from '../screens/auth/OnboardingScreen';
-import RoleSelectorScreen from '../screens/dev/RoleSelectorScreen';
-import UserPickerScreen from '../screens/dev/UserPickerScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 const navigationRef = createNavigationContainerRef<RootStackParamList>();
 
-// SECURITY: Dev mode only works in actual development builds
-// Never allow auth bypass in production, even if env var is set
-const DEV_MODE_ROLE = __DEV__ ? (process.env.EXPO_PUBLIC_DEV_MODE_ROLE || '') : '';
-
 const linking = {
-  prefixes: ['idaily://', 'https://idaily.app'],
+  prefixes: ['dailicart://', 'https://dailicart.in'],
   config: {
     screens: {
       Auth: {
@@ -79,74 +73,25 @@ const linking = {
 };
 
 export const RootNavigator = () => {
-  // Skip auth in dev mode - navigate to role selector or specific role
-  useEffect(() => {
-    if (DEV_MODE_ROLE && navigationRef.isReady()) {
-      const roleMap: Record<string, 'Auth' | 'Customer' | 'Admin' | 'Distributor' | 'Onboarding' | 'DevSelector'> = {
-        customer: 'Customer',
-        admin: 'Admin',
-        distributor: 'Distributor',
-        onboarding: 'Onboarding',
-        auth: 'Auth',
-        selector: 'DevSelector',
-      };
-      const target = roleMap[DEV_MODE_ROLE] || 'DevSelector';
-      setTimeout(() => navigationRef.navigate(target as any), 100);
-    }
-  }, []);
-
-  const handleRoleSelect = (role: string) => {
-    if (role === 'impersonate') {
-      navigationRef.navigate('UserPicker');
-      return;
-    }
-    if (role === 'selector') {
-      navigationRef.navigate('DevSelector');
-      return;
-    }
-    const targetMap: Record<string, keyof RootStackParamList> = {
-      customer: 'Customer',
-      admin: 'Admin',
-      distributor: 'Distributor',
-      onboarding: 'Onboarding',
-      auth: 'Auth',
-    };
-    const target = targetMap[role];
-    if (target) {
-      navigationRef.navigate(target);
-    }
-  };
-
   return (
-    <NavigationContainer ref={navigationRef} linking={linking}>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {/* Dev-only screens - only available in development builds */}
-        {__DEV__ && (
-          <>
-            <Stack.Screen name="DevSelector">
-              {() => <RoleSelectorScreen onSelect={handleRoleSelect} />}
-            </Stack.Screen>
-            <Stack.Screen name="UserPicker">
-              {() => <UserPickerScreen onSelect={handleRoleSelect} />}
-            </Stack.Screen>
-          </>
-        )}
-        <Stack.Screen name="Auth" component={AuthNavigator} />
-        <Stack.Screen name="Onboarding" component={OnboardingScreen} />
-        <Stack.Screen name="Customer" component={CustomerNavigator} />
-        <Stack.Screen name="Admin" component={AdminNavigator} />
-        <Stack.Screen name="Distributor" component={DistributorNavigator} />
-      </Stack.Navigator>
+    <>
+      <NavigationContainer ref={navigationRef} linking={linking}>
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="Auth" component={AuthNavigator} />
+          <Stack.Screen name="Onboarding" component={OnboardingScreen} />
+          <Stack.Screen name="Customer" component={CustomerNavigator} />
+          <Stack.Screen name="Admin" component={AdminNavigator} />
+          <Stack.Screen name="Distributor" component={DistributorNavigator} />
+        </Stack.Navigator>
+      </NavigationContainer>
 
-      {!DEV_MODE_ROLE && (
-        <RoleGate
-          onAuth={() => { if (navigationRef.isReady()) navigationRef.navigate('Auth'); }}
-          onOnboarding={() => { if (navigationRef.isReady()) navigationRef.navigate('Onboarding'); }}
-          onCustomer={() => { if (navigationRef.isReady()) navigationRef.navigate('Customer'); }}
-          onAdmin={() => { if (navigationRef.isReady()) navigationRef.navigate('Admin'); }}
-          onDistributor={() => { if (navigationRef.isReady()) navigationRef.navigate('Distributor'); }}
-        />
-      )}
-    </NavigationContainer>
+      <RoleGate
+        onAuth={() => { if (navigationRef.isReady()) navigationRef.navigate('Auth'); }}
+        onOnboarding={() => { if (navigationRef.isReady()) navigationRef.navigate('Onboarding'); }}
+        onCustomer={() => { if (navigationRef.isReady()) navigationRef.navigate('Customer'); }}
+        onAdmin={() => { if (navigationRef.isReady()) navigationRef.navigate('Admin'); }}
+        onDistributor={() => { if (navigationRef.isReady()) navigationRef.navigate('Distributor'); }}
+      />
+    </>
   );
 };

@@ -141,8 +141,8 @@ export const ActivationCodesScreen: React.FC<AdminScreenProps<'ActivationCodes'>
   const handleShareCode = async (code: string) => {
     try {
       await Share.share({
-        message: `Your iDaily Distributor Activation Code is: ${code}\n\nUse this code when registering as a distributor on the iDaily app.`,
-        title: 'iDaily Activation Code',
+        message: `Your DailiCart Distributor Activation Code is: ${code}\n\nUse this code when registering as a distributor on the DailiCart app.`,
+        title: 'DailiCart Activation Code',
       });
     } catch (error) {
       console.error('Error sharing:', error);

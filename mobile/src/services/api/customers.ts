@@ -258,8 +258,8 @@ export class CustomerAdminService {
           floor,
           wallet: row.wallet_balance || 0,
           autoDeduct: false,
-          subscriptions: subCounts.get(row.id) || 0,
-          status: (subCounts.get(row.id) || 0) > 0 ? 'active' : 'inactive',
+          subscriptions: subCounts.get(row.users.id) || 0,
+          status: (subCounts.get(row.users.id) || 0) > 0 ? 'active' : 'inactive',
           isActive: row.users.is_active !== false,
           createdAt: row.users.created_at,
         };

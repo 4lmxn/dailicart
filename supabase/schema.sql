@@ -1,6 +1,6 @@
 -- =============================================================
--- iDaily PRODUCTION-GRADE Database Schema V2
--- Last updated: December 2024
+-- DailiCart PRODUCTION-GRADE Database Schema V2
+-- Last updated: December 2025
 -- 
 -- ⚠️  FINANCIAL-GRADE SCHEMA - Designed for holding user money
 -- Features:
@@ -839,11 +839,18 @@ DECLARE
     v_new_balance NUMERIC;
     v_ledger_id UUID;
     v_is_locked BOOLEAN;
+    v_rate_allowed BOOLEAN;
 BEGIN
     -- Check idempotency first
     SELECT id INTO v_ledger_id FROM wallet_ledger WHERE idempotency_key = p_idempotency_key;
     IF v_ledger_id IS NOT NULL THEN
         RETURN v_ledger_id;
+    END IF;
+    
+    -- Check rate limit (10 credits per minute per user)
+    SELECT check_rate_limit(p_user_id::TEXT, 'wallet_credit', 10, 60) INTO v_rate_allowed;
+    IF NOT v_rate_allowed THEN
+        RAISE EXCEPTION 'Rate limit exceeded. Please try again later.';
     END IF;
     
     -- Lock the customer row for update
@@ -905,11 +912,18 @@ DECLARE
     v_new_balance NUMERIC;
     v_ledger_id UUID;
     v_is_locked BOOLEAN;
+    v_rate_allowed BOOLEAN;
 BEGIN
     -- Check idempotency first
     SELECT id INTO v_ledger_id FROM wallet_ledger WHERE idempotency_key = p_idempotency_key;
     IF v_ledger_id IS NOT NULL THEN
         RETURN v_ledger_id;
+    END IF;
+    
+    -- Check rate limit (15 debits per minute per user)
+    SELECT check_rate_limit(p_user_id::TEXT, 'wallet_debit', 15, 60) INTO v_rate_allowed;
+    IF NOT v_rate_allowed THEN
+        RAISE EXCEPTION 'Rate limit exceeded. Please try again later.';
     END IF;
     
     -- Lock the customer row

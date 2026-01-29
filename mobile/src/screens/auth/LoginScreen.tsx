@@ -123,7 +123,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
               <View style={styles.logoBadge}>
                 <Text style={styles.logoEmoji}>🥛</Text>
               </View>
-              <Text style={styles.appName}>iDaily</Text>
+              <Text style={styles.appName}>DailiCart</Text>
               <Text style={styles.tagline}>Fresh Milk, Every Morning</Text>
             </View>
             

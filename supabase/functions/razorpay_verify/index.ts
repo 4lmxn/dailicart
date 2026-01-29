@@ -3,6 +3,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders, handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
+import { checkRateLimit, rateLimitResponse, getRequestIdentifier } from '../_shared/rateLimit.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -50,6 +51,12 @@ Deno.serve(async (req) => {
     
     if (authError || !user) {
       return errorResponse('Invalid or expired token', 401);
+    }
+
+    // Check rate limit for this user
+    const rateLimitResult = await checkRateLimit(supabase, user.id, 'payment:verify');
+    if (!rateLimitResult.allowed) {
+      return rateLimitResponse(60);
     }
 
     // Parse and validate request body

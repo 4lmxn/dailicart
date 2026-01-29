@@ -27,9 +27,9 @@ export function parseDistributorBuildingDeliveriesParams(params: any): Distribut
 }
 
 export const DeepLinkExamples = {
-  adminCustomerDetail: (id: string) => `idaily://admin/customers/${encodeURIComponent(id)}`,
-  adminDistributorDetail: (id: string) => `idaily://admin/distributors/${encodeURIComponent(id)}`,
-  adminSubscriptionDetail: (id: string) => `idaily://admin/subscriptions/${encodeURIComponent(id)}`,
-  distributorBuildingDeliveries: (id: string) => `idaily://distributor/buildings/${encodeURIComponent(id)}`,
-  customerProducts: () => `idaily://customer/products`,
+  adminCustomerDetail: (id: string) => `dailicart://admin/customers/${encodeURIComponent(id)}`,
+  adminDistributorDetail: (id: string) => `dailicart://admin/distributors/${encodeURIComponent(id)}`,
+  adminSubscriptionDetail: (id: string) => `dailicart://admin/subscriptions/${encodeURIComponent(id)}`,
+  distributorBuildingDeliveries: (id: string) => `dailicart://distributor/buildings/${encodeURIComponent(id)}`,
+  customerProducts: () => `dailicart://customer/products`,
 };

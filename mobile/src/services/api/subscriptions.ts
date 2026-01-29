@@ -2,6 +2,7 @@ import { supabase } from '../supabase';
 import { Subscription } from './types';
 import { uuidSchema, safeValidate, z } from '../../utils/validation';
 import { getLocalDateString } from '../../utils/helpers';
+import { checkRateLimit } from '../../utils/rateLimit';
 
 // Local subscription validation schema
 const subscriptionQuantitySchema = z.number().int().min(1, 'Minimum quantity is 1').max(10, 'Maximum quantity is 10');
@@ -257,12 +258,17 @@ export class SubscriptionService {
       const pausedUntil = new Date();
       pausedUntil.setDate(pausedUntil.getDate() + pauseDays);
 
+      // Use local date helper to avoid timezone issues
+      const { getLocalDateString } = await import('../../utils/helpers');
+      const todayLocal = getLocalDateString();
+      const pauseEndLocal = getLocalDateString(pausedUntil);
+
       const { data, error } = await supabase
         .from('subscriptions')
         .update({
           status: 'paused',
-          pause_start_date: new Date().toISOString().slice(0,10),
-          pause_end_date: pausedUntil.toISOString().slice(0,10),
+          pause_start_date: todayLocal,
+          pause_end_date: pauseEndLocal,
           updated_at: new Date().toISOString(),
         })
         .eq('id', subscriptionId)
@@ -556,6 +562,13 @@ export class SubscriptionService {
     deliveryTime: 'morning' | 'evening';
     startDate?: string;
   }): Promise<string> {
+    // Rate limit check (10 subscription creates per minute)
+    const rateLimitCheck = checkRateLimit('api:write', params.customerId);
+    if (!rateLimitCheck.allowed) {
+      const waitSeconds = Math.ceil((rateLimitCheck.retryAfterMs || 0) / 1000);
+      throw new Error(`Too many requests. Please wait ${waitSeconds} seconds.`);
+    }
+
     // Validate all inputs
     const customerValidation = safeValidate(uuidSchema, params.customerId);
     if (!customerValidation.success) {
@@ -639,8 +652,10 @@ export class SubscriptionService {
       } catch (rpcError) {
         // If RPC doesn't exist yet, fall back to the old method
         console.log('Auto-generation RPC not available, using legacy method');
-        const today = new Date().toISOString().slice(0, 10);
-        const end = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+        const { getLocalDateString } = await import('../../utils/helpers');
+        const today = getLocalDateString();
+        const endDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+        const end = getLocalDateString(endDate);
         try {
           await supabase.rpc('generate_subscription_orders', {
             p_start: today,

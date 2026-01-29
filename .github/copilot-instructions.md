@@ -1,7 +1,7 @@
-# iDaily Copilot Instructions
+# DailiCart Copilot Instructions
 
 ## Project Overview
-iDaily is a **milk delivery subscription app** for Indian housing societies. It has three user roles:
+DailiCart is a **milk delivery subscription app** for Indian housing societies. It has three user roles:
 - **Customer**: Subscribe to products, manage wallet, track deliveries
 - **Distributor**: Deliver orders to assigned buildings, track earnings
 - **Admin**: Manage customers, distributors, buildings, payouts, inventory

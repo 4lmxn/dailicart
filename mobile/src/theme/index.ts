@@ -1,4 +1,4 @@
-// iDaily Brand Colors and Theme
+// DailiCart Brand Colors and Theme
 // Base color scales (grayscale + brand palettes)
 const gray = {
   50: '#FAFAFA',
@@ -177,3 +177,4 @@ export type Theme = typeof theme;
 
 // useTheme hook for components that need theme access
 export const useTheme = () => theme;
+

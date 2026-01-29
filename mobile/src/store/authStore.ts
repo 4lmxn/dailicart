@@ -229,8 +229,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         set({ isLoading: false, initializing: false });
       }
 
-      // Attach auth state listener
-      supabase.auth.onAuthStateChange(async (event, currentSession) => {
+      // Attach auth state listener (only once)
+      // Store unsubscribe reference to prevent memory leaks
+      if (!(globalThis as any).__authListenerAttached) {
+        (globalThis as any).__authListenerAttached = true;
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
         if (event === 'SIGNED_IN' && currentSession) {
           const authUser = mapToAuthUser(currentSession.user);
           await AsyncStorage.multiSet([
@@ -264,6 +267,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           });
         }
       });
+      // Store subscription for potential cleanup
+      (globalThis as any).__authSubscription = subscription;
+      }
     } catch (error) {
       console.error('[loadUserFromStorage Error]', error);
       set({ isLoading: false, initializing: false });

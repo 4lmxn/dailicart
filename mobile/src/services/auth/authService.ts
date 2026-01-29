@@ -115,7 +115,7 @@ export class AuthService {
         // Create app user row from provider data
         const newUser: AuthUser = {
           id: sbUser.id,
-          email: sbUser.email || `user_${sbUser.id}@idaily.com`,
+          email: sbUser.email || `user_${sbUser.id}@dailicart.in`,
           name: (sbUser.user_metadata?.full_name || sbUser.user_metadata?.name || sbUser.email || 'New User'),
           phone: sbUser.phone || '',
           role: 'customer',
@@ -302,7 +302,7 @@ export class AuthService {
       if (!userProfile) {
         // Generate unique email if none provided
         const phoneDigits = formattedPhone.replace(/\D/g, '');
-        const uniqueEmail = data.user.email || `user${phoneDigits}@idaily.com`;
+        const uniqueEmail = data.user.email || `user${phoneDigits}@dailicart.in`;
         
         const newUser = {
           id: data.user.id,

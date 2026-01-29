@@ -1,4 +1,4 @@
-# iDaily Development Environment Setup (Linux)
+# DailiCart Development Environment Setup (Linux)
 
 ## 1. Prerequisites (Versions)
 - Node.js: 18.x LTS or 20.x LTS (Expo SDK 54 is compatible; avoid Node 21 experimental)
@@ -32,7 +32,7 @@ npm install -g expo@latest supabase
 
 ## 5. Clone & Install Dependencies
 ```bash
-cd /home/mohammed-alman/Desktop/Projects/iDaily/mobile
+cd ~/Projects/dailicart/mobile
 npm install
 ```
 (If you prefer Yarn: `corepack enable && yarn install`)

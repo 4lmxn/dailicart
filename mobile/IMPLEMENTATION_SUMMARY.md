@@ -1,4 +1,4 @@
-# 🎉 iDaily Frontend Implementation Complete
+# 🎉 DailiCart Frontend Implementation Complete
 
 ## ✅ What's Been Implemented
 

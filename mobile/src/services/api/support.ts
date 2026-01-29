@@ -2,6 +2,7 @@ import { supabase } from '../supabase';
 import { uploadTicketAttachment } from '../../utils/imageUpload';
 import { uuidSchema, safeTextSchema, safeValidate, z } from '../../utils/validation';
 import { getLocalDateString } from '../../utils/helpers';
+import { checkRateLimit } from '../../utils/rateLimit';
 
 // Local support validation schemas
 const ticketSubjectSchema = safeTextSchema.min(5, 'Subject too short').max(100, 'Subject too long');
@@ -187,6 +188,13 @@ export class SupportService {
     userId: string,
     input: CreateTicketInput
   ): Promise<SupportTicket> {
+    // Rate limit check (5 tickets per 5 minutes)
+    const rateLimitCheck = checkRateLimit('support:create', userId);
+    if (!rateLimitCheck.allowed) {
+      const waitSeconds = Math.ceil((rateLimitCheck.retryAfterMs || 0) / 1000);
+      throw new Error(`Too many support requests. Please wait ${waitSeconds} seconds.`);
+    }
+
     // Validate all inputs
     const userValidation = safeValidate(uuidSchema, userId);
     if (!userValidation.success) {
@@ -298,6 +306,13 @@ export class SupportService {
     senderRole: 'customer' | 'admin' | 'superadmin',
     message: string
   ): Promise<TicketMessage> {
+    // Rate limit check (20 messages per minute)
+    const rateLimitCheck = checkRateLimit('support:message', senderId);
+    if (!rateLimitCheck.allowed) {
+      const waitSeconds = Math.ceil((rateLimitCheck.retryAfterMs || 0) / 1000);
+      throw new Error(`Too many messages. Please wait ${waitSeconds} seconds.`);
+    }
+
     // Validate inputs
     const ticketValidation = safeValidate(uuidSchema, ticketId);
     if (!ticketValidation.success) {
@@ -818,48 +833,29 @@ export class SupportService {
         };
       }
 
-      // Get current balance
-      const currentBalance = customer.wallet_balance || 0;
-      const newBalance = currentBalance + amount;
-
-      // Update customer wallet balance
-      const { error: updateError } = await supabase
-        .from('customers')
-        .update({
-          wallet_balance: newBalance,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('user_id', ticket.userId);
-
-      if (updateError) {
-        console.error('Error updating wallet balance:', updateError);
-        return { success: false, message: 'Failed to update wallet balance' };
-      }
-
-      // Record in wallet_ledger (transaction history)
-      const { error: ledgerError } = await supabase.from('wallet_ledger').insert({
-        user_id: ticket.userId,
-        entry_type: 'credit',
-        amount: amount,
-        balance_before: currentBalance,
-        balance_after: newBalance,
-        reference_type: isRefund ? 'refund' : 'support_credit',
-        reference_id: ticketId,
-        idempotency_key: idempotencyKey,
-        description: isRefund
+      // Use credit_wallet RPC for proper double-entry ledger accounting
+      const { error: creditError } = await supabase.rpc('credit_wallet', {
+        p_user_id: ticket.userId,
+        p_amount: amount,
+        p_idempotency_key: idempotencyKey,
+        p_reference_type: isRefund ? 'refund' : 'support_credit',
+        p_reference_id: ticketId,
+        p_description: isRefund
           ? `Refund for ticket #${ticket.ticketNumber}`
           : `Support credit for ticket #${ticket.ticketNumber}`,
+        p_created_by: adminId,
       });
 
-      if (ledgerError) {
-        console.error('Error recording wallet ledger:', ledgerError);
-        // Rollback balance update
-        await supabase
-          .from('customers')
-          .update({ wallet_balance: currentBalance })
-          .eq('user_id', ticket.userId);
-        return { success: false, message: 'Failed to record transaction' };
+      if (creditError) {
+        console.error('Error crediting wallet:', creditError);
+        return { success: false, message: 'Failed to credit wallet' };
       }
+
+      // Get new balance for display
+      const { data: newBalanceData } = await supabase.rpc('get_wallet_balance', {
+        p_user_id: ticket.userId,
+      });
+      const newBalance = newBalanceData || 0;
 
       // Update ticket as resolved
       const resolutionType = isRefund ? 'REFUND' : 'CREDIT';
