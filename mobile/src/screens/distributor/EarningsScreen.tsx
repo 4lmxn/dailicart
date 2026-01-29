@@ -102,11 +102,12 @@ export const EarningsScreen = ({ navigation }: DistributorScreenProps<'Earnings'
         dailyMap.set(dateStr, { date: dateStr, amount: 0, orders: 0 });
       }
 
-      // Fill with actual data (10% commission)
+      // Fill with actual data (10% commission) - use Math.round for precision
       ordersData?.forEach(order => {
         const existing = dailyMap.get(order.delivery_date);
         if (existing) {
-          existing.amount += (order.total_amount || 0) * 0.1;
+          // Round to 2 decimal places to avoid float precision issues
+          existing.amount = Math.round((existing.amount + (order.total_amount || 0) * 0.1) * 100) / 100;
           existing.orders += 1;
         }
       });

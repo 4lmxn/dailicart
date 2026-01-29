@@ -114,32 +114,42 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({ onBack }) => {
     return { start, end };
   };
 
-  const loadMonth = useCallback(async (date: Date) => {
+  const loadMonth = useCallback(async (date: Date, signal?: AbortSignal) => {
     if (!user?.id) return;
     setLoading(true);
     setEvents({}); // Clear events first to force re-render
     try {
       const { start, end } = monthRange(date);
       const data = await DeliveryService.getCalendar(user.id, start, end);
+      
+      if (signal?.aborted) return;
+      
       const map: Record<string, DeliveryEvent> = {};
       data.forEach((e) => { map[e.date] = e as DeliveryEvent; });
       setEvents(map);
     } catch (e) {
+      if (signal?.aborted) return;
       console.error('Calendar load error', e);
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) {
+        setLoading(false);
+      }
     }
   }, [user?.id]);
 
   // Reload calendar when screen comes into focus (e.g., after changing frequency)
   useFocusEffect(
     useCallback(() => {
-      loadMonth(currentDate);
+      const abortController = new AbortController();
+      loadMonth(currentDate, abortController.signal);
+      return () => abortController.abort();
     }, [loadMonth, currentDate])
   );
 
   useEffect(() => {
-    loadMonth(currentDate);
+    const abortController = new AbortController();
+    loadMonth(currentDate, abortController.signal);
+    return () => abortController.abort();
   }, [user?.id, currentDate, loadMonth]);
 
   const changeMonth = (direction: number) => {

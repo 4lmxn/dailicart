@@ -22,13 +22,22 @@ export class CustomerAdminService {
       let data: any[] = [];
       let count = 0;
 
+      // Sanitize search query to prevent SQL injection via wildcards
+      const sanitizeSearchQuery = (query: string): string => {
+        // Escape SQL LIKE special characters and trim
+        return query.replace(/[%_\\]/g, '\\$&').trim();
+      };
+
       // Helper to search users and get their IDs
       const searchUserIds = async (query: string): Promise<string[]> => {
+        const sanitizedQuery = sanitizeSearchQuery(query);
+        if (!sanitizedQuery) return [];
+        
         const { data: matchingUsers } = await supabase
           .from('users')
           .select('id')
           .eq('role', 'customer')
-          .or(`name.ilike.%${query}%,phone.ilike.%${query}%,email.ilike.%${query}%`);
+          .or(`name.ilike.%${sanitizedQuery}%,phone.ilike.%${sanitizedQuery}%,email.ilike.%${sanitizedQuery}%`);
         return (matchingUsers || []).map(u => u.id);
       };
 

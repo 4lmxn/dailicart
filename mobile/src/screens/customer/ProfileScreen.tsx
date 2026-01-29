@@ -111,10 +111,50 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack }) => {
   const [societySearchQuery, setSocietySearchQuery] = useState('');
   const [loadingAddressStep, setLoadingAddressStep] = useState<string | null>(null);
   const [addressError, setAddressError] = useState<string | null>(null);
+  const [savingProfile, setSavingProfile] = useState(false);
 
-  const handleSaveProfile = () => {
-    setIsEditingProfile(false);
-    Alert.alert('Success', 'Profile updated successfully!');
+  const handleSaveProfile = async () => {
+    if (!user?.id) {
+      Alert.alert('Error', 'User not found. Please re-login.');
+      return;
+    }
+
+    // Validate inputs
+    if (!profile.name.trim()) {
+      Alert.alert('Error', 'Name is required');
+      return;
+    }
+
+    setSavingProfile(true);
+    try {
+      // Update users table
+      const { error: userError } = await supabase
+        .from('users')
+        .update({
+          name: profile.name.trim(),
+          email: profile.email.trim() || null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', user.id);
+
+      if (userError) throw userError;
+
+      // Update local auth store with new name
+      const { setUser: updateUser } = useAuthStore.getState();
+      updateUser({
+        ...user,
+        name: profile.name.trim(),
+        email: profile.email.trim() || user.email,
+      });
+
+      setIsEditingProfile(false);
+      Alert.alert('Success', 'Profile updated successfully!');
+    } catch (error: any) {
+      console.error('Error saving profile:', error);
+      Alert.alert('Error', error.message || 'Failed to save profile. Please try again.');
+    } finally {
+      setSavingProfile(false);
+    }
   };
 
   const loadSocietiesForAddress = async () => {
@@ -362,8 +402,16 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack }) => {
             </View>
 
             {isEditingProfile && (
-              <TouchableOpacity style={styles.saveButton} onPress={handleSaveProfile}>
-                <Text style={styles.saveButtonText}>Save Changes</Text>
+              <TouchableOpacity 
+                style={[styles.saveButton, savingProfile && styles.saveButtonDisabled]} 
+                onPress={handleSaveProfile}
+                disabled={savingProfile}
+              >
+                {savingProfile ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={styles.saveButtonText}>Save Changes</Text>
+                )}
               </TouchableOpacity>
             )}
           </View>
@@ -706,6 +754,9 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     alignItems: 'center',
     marginTop: 8,
+  },
+  saveButtonDisabled: {
+    opacity: 0.7,
   },
   saveButtonText: {
     fontSize: 16,

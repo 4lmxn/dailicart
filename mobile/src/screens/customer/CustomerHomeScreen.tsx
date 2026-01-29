@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,8 @@ import {
 import { useAuthStore } from '../../store/authStore';
 import { theme } from '../../theme';
 import { AppBar } from '../../components/AppBar';
+import { ErrorBanner } from '../../components/ErrorBanner';
+import { Skeleton } from '../../components/Skeleton';
 import { formatCurrency, formatSocietyAddress, parseAddressJson, getLocalDateString } from '../../utils/helpers';
 import { WalletService } from '../../services/api/wallet';
 import { SubscriptionService } from '../../services/api/subscriptions';
@@ -61,6 +63,7 @@ export const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = ({
   const { user } = useAuthStore();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [walletBalance, setWalletBalance] = useState(0);
   const [activeSubscriptions, setActiveSubscriptions] = useState<any[]>([]);
   const [todayPending, setTodayPending] = useState(0);
@@ -69,9 +72,10 @@ export const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = ({
   const [todaySkipped, setTodaySkipped] = useState(0);
   const [addressLine, setAddressLine] = useState<string | null>(null);
 
-  const loadData = async () => {
+  const loadData = useCallback(async (signal?: AbortSignal) => {
     if (!user) return;
 
+    setError(null);
     try {
       // Subscriptions and wallet use user_id directly
       const [walletData, subscriptionsData, defaultAddr] = await Promise.all([
@@ -79,6 +83,9 @@ export const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = ({
         SubscriptionService.getCustomerSubscriptions(user.id),
         getDefaultAddress(user.id),
       ]);
+
+      // Check if component unmounted
+      if (signal?.aborted) return;
 
       // `getBalance` returns a number; assign directly
       setWalletBalance(walletData);
@@ -92,6 +99,8 @@ export const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = ({
         .select('id, status')
         .eq('user_id', user.id)
         .eq('delivery_date', today);
+      
+      if (signal?.aborted) return;
       
       const pending = (todayOrders || []).filter(o => 
         ['scheduled', 'pending', 'assigned', 'in_transit'].includes(o.status)
@@ -117,22 +126,30 @@ export const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = ({
       } else {
         setAddressLine(null);
       }
-    } catch (error) {
-      console.error('Error loading data:', error);
+    } catch (err: any) {
+      if (signal?.aborted) return;
+      console.error('Error loading data:', err);
+      setError(err.message || 'Failed to load dashboard data');
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) {
+        setLoading(false);
+      }
     }
-  };
-
-  useEffect(() => {
-    loadData();
   }, [user]);
 
-  const onRefresh = async () => {
+  useEffect(() => {
+    const abortController = new AbortController();
+    loadData(abortController.signal);
+    return () => {
+      abortController.abort();
+    };
+  }, [loadData]);
+
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await loadData();
     setRefreshing(false);
-  };
+  }, [loadData]);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -158,18 +175,42 @@ export const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = ({
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[theme.colors.primary]} />
         }
       >
+        {/* Error Banner */}
+        {error && (
+          <ErrorBanner
+            message={error}
+            onRetry={() => {
+              setLoading(true);
+              loadData();
+            }}
+          />
+        )}
+
+        {/* Loading Skeleton */}
+        {loading && !refreshing && (
+          <View style={styles.skeletonContainer}>
+            <Skeleton width="60%" height={24} style={{ marginBottom: 8 }} />
+            <Skeleton width="80%" height={16} style={{ marginBottom: 16 }} />
+            <Skeleton width="100%" height={80} style={{ marginBottom: 12, borderRadius: 12 }} />
+            <Skeleton width="100%" height={120} style={{ marginBottom: 12, borderRadius: 12 }} />
+            <Skeleton width="100%" height={100} style={{ borderRadius: 12 }} />
+          </View>
+        )}
+
         {/* Personalized Greeting */}
-        <View style={styles.greetingSection}>
-          <Text style={styles.greetingText}>{getGreeting()}, {user?.name?.split(' ')[0] || 'there'}! 👋</Text>
-          <Text style={styles.greetingSubtext}>
-            {todayPending > 0 
-              ? `You have ${todayPending} pending delivery${todayPending > 1 ? 'ies' : ''} today`
-              : todayDelivered > 0
-                ? `${todayDelivered} delivery${todayDelivered > 1 ? 'ies' : ''} completed today ✓`
-                : 'No deliveries scheduled for today'
-            }
-          </Text>
-        </View>
+        {!loading && (
+          <View style={styles.greetingSection}>
+            <Text style={styles.greetingText}>{getGreeting()}, {user?.name?.split(' ')[0] || 'there'}! 👋</Text>
+            <Text style={styles.greetingSubtext}>
+              {todayPending > 0 
+                ? `You have ${todayPending} pending delivery${todayPending > 1 ? 'ies' : ''} today`
+                : todayDelivered > 0
+                  ? `${todayDelivered} delivery${todayDelivered > 1 ? 'ies' : ''} completed today ✓`
+                  : 'No deliveries scheduled for today'
+              }
+            </Text>
+          </View>
+        )}
 
         {/* Address Identity - Improved UI */}
         <TouchableOpacity 
@@ -411,6 +452,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F8FAFC',
+  },
+  skeletonContainer: {
+    marginBottom: 16,
   },
   // Header removed in favor of shared AppBar
   scrollView: {

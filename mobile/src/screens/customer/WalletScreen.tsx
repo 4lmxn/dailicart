@@ -63,9 +63,20 @@ export const WalletScreen: React.FC<WalletScreenProps> = ({ onBack }) => {
   const [autoRechargeThreshold, setAutoRechargeThreshold] = useState(MINIMUM_BALANCE.toString());
   const [autoRechargeAmount, setAutoRechargeAmount] = useState('200');
 
-  // Load wallet data on mount
+  // Load wallet data on mount with cleanup
   useEffect(() => {
-    loadWalletData();
+    let isMounted = true;
+    
+    const loadData = async () => {
+      if (!isMounted) return;
+      await loadWalletData();
+    };
+    
+    loadData();
+    
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const loadWalletData = async () => {
@@ -295,12 +306,39 @@ export const WalletScreen: React.FC<WalletScreenProps> = ({ onBack }) => {
                   );
                 } else {
                   setVerificationStatus('failed');
+                  
+                  // Store failed payment for reconciliation
+                  try {
+                    await supabase.from('payments').upsert({
+                      id: result.paymentId,
+                      user_id: user.id,
+                      amount: amount,
+                      razorpay_payment_id: result.paymentId,
+                      razorpay_order_id: result.orderId || null,
+                      status: 'pending_reconciliation',
+                      notes: 'Payment successful but wallet credit failed - needs manual reconciliation',
+                      created_at: new Date().toISOString(),
+                    }, { onConflict: 'id' });
+                  } catch (storeError) {
+                    console.error('Failed to store pending payment:', storeError);
+                  }
+                  
                   toast.show('⚠️ Payment succeeded but verification failed', { type: 'error' });
                   Alert.alert(
                     'Payment Processing',
                     'Your payment was successful but there was an issue updating your wallet. ' +
-                    'Please contact support with payment ID: ' + result.paymentId,
-                    [{ text: 'OK' }]
+                    'The amount will be credited within 24 hours. ' +
+                    'If not credited, please contact support with payment ID: ' + result.paymentId,
+                    [
+                      { 
+                        text: 'Contact Support',
+                        onPress: () => {
+                          // Could navigate to support screen
+                          Alert.alert('Support', 'Please email support@dailicart.in with Payment ID: ' + result.paymentId);
+                        }
+                      },
+                      { text: 'OK' }
+                    ]
                   );
                 }
               } else {

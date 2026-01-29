@@ -1,6 +1,7 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { CustomerStackParamList } from './types';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 import { CustomerHomeScreen } from '../screens/customer/CustomerHomeScreen';
 import { ProductCatalogScreen } from '../screens/customer/ProductCatalogScreen';
 import { CreateSubscriptionScreen } from '../screens/customer/CreateSubscriptionScreen';
@@ -15,15 +16,16 @@ const Stack = createNativeStackNavigator<CustomerStackParamList>();
 
 export const CustomerNavigator = () => {
   return (
-    <Stack.Navigator
-      screenOptions={{
-        headerShown: false,
-        animation: 'slide_from_right',
-        gestureEnabled: true,
-        gestureDirection: 'horizontal',
-        fullScreenGestureEnabled: true,
-      }}
-    >
+    <ErrorBoundary>
+      <Stack.Navigator
+        screenOptions={{
+          headerShown: false,
+          animation: 'slide_from_right',
+          gestureEnabled: true,
+          gestureDirection: 'horizontal',
+          fullScreenGestureEnabled: true,
+        }}
+      >
       <Stack.Screen name="CustomerHome">
         {({ navigation }) => (
           <CustomerHomeScreen
@@ -94,5 +96,6 @@ export const CustomerNavigator = () => {
         )}
       </Stack.Screen>
     </Stack.Navigator>
+    </ErrorBoundary>
   );
 };
