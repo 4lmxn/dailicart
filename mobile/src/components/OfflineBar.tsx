@@ -1,6 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Animated } from 'react-native';
+import { View, Text, StyleSheet, Animated, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import NetInfo, { NetInfoState } from '@react-native-community/netinfo';
+
+// Re-export connectivity state for use elsewhere
+export const useNetworkStatus = () => {
+  const [isConnected, setIsConnected] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener((state: NetInfoState) => {
+      setIsConnected(state.isConnected ?? true);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  return isConnected;
+};
 
 export const OfflineBar: React.FC = () => {
   const [isOffline, setIsOffline] = useState(false);
@@ -8,25 +24,12 @@ export const OfflineBar: React.FC = () => {
   const insets = useSafeAreaInsets();
 
   useEffect(() => {
-    // Note: @react-native-community/netinfo needs to be installed
-    // For now, using a simple implementation
-    // TODO: Install and configure @react-native-community/netinfo
-    
-    // Placeholder implementation - checks navigator.onLine if available
-    if (typeof navigator !== 'undefined' && 'onLine' in navigator) {
-      setIsOffline(!navigator.onLine);
+    // Use NetInfo for proper connectivity detection
+    const unsubscribe = NetInfo.addEventListener((state: NetInfoState) => {
+      setIsOffline(!(state.isConnected ?? true));
+    });
 
-      const handleOnline = () => setIsOffline(false);
-      const handleOffline = () => setIsOffline(true);
-
-      window.addEventListener('online', handleOnline);
-      window.addEventListener('offline', handleOffline);
-
-      return () => {
-        window.removeEventListener('online', handleOnline);
-        window.removeEventListener('offline', handleOffline);
-      };
-    }
+    return () => unsubscribe();
   }, []);
 
   useEffect(() => {

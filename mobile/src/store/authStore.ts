@@ -5,6 +5,8 @@ import { STORAGE_KEYS } from '../constants';
 import { AuthService, AuthUser } from '../services/auth/authService';
 import { supabase } from '../services/supabase';
 import { CustomerProfileService } from '../services/api/customerProfile';
+import { setSentryUser, clearSentryUser } from '../services/sentry';
+import { clearAllCache, cacheUserProfile } from '../services/offlineCache';
 
 // Helper to map AuthUser/SupabaseUser to our User type - eliminates duplication
 function mapToUser(source: AuthUser | { id: string; email?: string | null; phone?: string | null; user_metadata?: any }): User {
@@ -133,6 +135,23 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         accountLocked: false,
         lockExpiresAt: null,
       });
+
+      // Set Sentry user context for crash tracking (phone OTP + Google OAuth)
+      setSentryUser({ 
+        id: authUser.id, 
+        phone: authUser.phone,
+        email: authUser.email, 
+        role: authUser.role 
+      });
+
+      // Cache user profile for offline access
+      cacheUserProfile({
+        id: authUser.id,
+        name: authUser.name,
+        phone: authUser.phone,
+        email: authUser.email,
+        role: authUser.role,
+      });
     } catch (error) {
       console.error('[loginWithSupabase Error]', error);
       throw error;
@@ -167,6 +186,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       // Sign out from Supabase
       await AuthService.signOut();
+
+      // Clear Sentry user context
+      clearSentryUser();
+
+      // Clear all cached data
+      await clearAllCache();
 
       // Reset state
       set({

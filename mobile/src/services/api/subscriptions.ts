@@ -603,15 +603,21 @@ export class SubscriptionService {
       }
       const startDate = params.startDate || getLocalDateString();
       
-      // Get the product price to lock it in the subscription
+      // Get the product price and max quantity for validation
       const { data: product, error: productError } = await supabase
         .from('products')
-        .select('price')
+        .select('price, max_order_quantity')
         .eq('id', params.productId)
         .single();
       
       if (productError || !product) {
         throw new Error('Product not found');
+      }
+
+      // Validate quantity against product's max_order_quantity (server-side validation)
+      const maxQty = product.max_order_quantity || 10;
+      if (params.quantity > maxQty) {
+        throw new Error(`Maximum quantity for this product is ${maxQty}`);
       }
 
       const { data, error } = await supabase

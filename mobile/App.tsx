@@ -10,8 +10,12 @@ import { ToastProvider } from './src/components/Toast';
 import * as Linking from 'expo-linking';
 import { Platform } from 'react-native';
 import { AuthService } from './src/services/auth/authService';
+import { initSentry, setSentryUser, Sentry } from './src/services/sentry';
 
-export default function App() {
+// Initialize Sentry immediately for crash tracking
+initSentry();
+
+function AppContent() {
   const { isLoading, loadUserFromStorage } = useAuthStore();
   // Guard to prevent multiple OAuth exchanges causing 429
   const handledOnceRef = useRef(false);
@@ -34,6 +38,13 @@ export default function App() {
         await useAuthStore.getState().loginWithSupabase(result.user, result.session);
         // Force a quick refresh of user from storage to flip navigator
         await useAuthStore.getState().loadUserFromStorage();
+        // Set Sentry user context (supports phone OTP and Google OAuth)
+        setSentryUser({ 
+          id: result.user.id, 
+          phone: result.user.phone,
+          email: result.user.email, 
+          role: result.user.role 
+        });
       } else {
         // Reset guard if failed, allow retry once
         handledOnceRef.current = false;
@@ -87,3 +98,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F5F5',
   },
 });
+
+// Wrap with Sentry for crash tracking
+export default Sentry.wrap(AppContent);
