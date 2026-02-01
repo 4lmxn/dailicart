@@ -70,14 +70,14 @@ export const StockCollectionScreen = ({ navigation }: DistributorScreenProps<'St
       }
 
       // Get distributor ID
-      const { data: dist } = await supabase
+      const { data: dist, error: distError } = await supabase
         .from('distributors')
         .select('id')
         .eq('user_id', userId)
-        .single();
+        .maybeSingle();
 
-      if (!dist?.id) {
-        setError('Distributor not found');
+      if (distError || !dist?.id) {
+        setError('Distributor profile not found');
         return;
       }
 

@@ -26,15 +26,27 @@ export const SUBSCRIPTION_FREQUENCIES = {
   custom: 'Custom Days',
 };
 
-// Week Days
+// Week Days - JavaScript format (0=Sunday, 1=Monday, etc.)
+// Use WEEK_DAYS_PICKER for UI starting with Monday
 export const WEEK_DAYS = [
-  { id: 1, name: 'Monday', short: 'Mon' },
-  { id: 2, name: 'Tuesday', short: 'Tue' },
-  { id: 3, name: 'Wednesday', short: 'Wed' },
-  { id: 4, name: 'Thursday', short: 'Thu' },
-  { id: 5, name: 'Friday', short: 'Fri' },
-  { id: 6, name: 'Saturday', short: 'Sat' },
-  { id: 7, name: 'Sunday', short: 'Sun' },
+  { id: 0, short: 'S', full: 'Sunday', name: 'Sunday' },
+  { id: 1, short: 'M', full: 'Monday', name: 'Monday' },
+  { id: 2, short: 'T', full: 'Tuesday', name: 'Tuesday' },
+  { id: 3, short: 'W', full: 'Wednesday', name: 'Wednesday' },
+  { id: 4, short: 'T', full: 'Thursday', name: 'Thursday' },
+  { id: 5, short: 'F', full: 'Friday', name: 'Friday' },
+  { id: 6, short: 'S', full: 'Saturday', name: 'Saturday' },
+];
+
+// Week Days starting from Monday (for picker UIs)
+export const WEEK_DAYS_PICKER = [
+  { id: 1, short: 'M', full: 'Monday', name: 'Monday' },
+  { id: 2, short: 'T', full: 'Tuesday', name: 'Tuesday' },
+  { id: 3, short: 'W', full: 'Wednesday', name: 'Wednesday' },
+  { id: 4, short: 'T', full: 'Thursday', name: 'Thursday' },
+  { id: 5, short: 'F', full: 'Friday', name: 'Friday' },
+  { id: 6, short: 'S', full: 'Saturday', name: 'Saturday' },
+  { id: 0, short: 'S', full: 'Sunday', name: 'Sunday' },
 ];
 
 // Order Status

@@ -62,26 +62,26 @@ export const BuildingDeliveriesScreen = ({ route, navigation }: DistributorScree
         throw new Error('Not authenticated');
       }
 
-      const { data: distributor } = await supabase
+      const { data: distributor, error: distError } = await supabase
         .from('distributors')
         .select('id')
         .eq('user_id', userId)
-        .single();
+        .maybeSingle();
 
-      if (!distributor) {
-        throw new Error('Distributor not found');
+      if (distError || !distributor) {
+        throw new Error('Distributor profile not found. Please contact admin.');
       }
 
       // Verify this building is assigned to the distributor
-      const { data: assignment } = await supabase
+      const { data: assignment, error: assignError } = await supabase
         .from('distributor_building_assignments')
         .select('id')
         .eq('distributor_id', distributor.id)
         .eq('tower_id', buildingId)
         .eq('is_active', true)
-        .single();
+        .maybeSingle();
 
-      if (!assignment) {
+      if (assignError || !assignment) {
         throw new Error('You are not assigned to this building');
       }
 
@@ -197,10 +197,15 @@ export const BuildingDeliveriesScreen = ({ route, navigation }: DistributorScree
         .from('orders')
         .select('status')
         .eq('id', delivery.id)
-        .single();
+        .maybeSingle();
 
       if (orderCheckError) throw orderCheckError;
-      if (orderCheck?.status === 'delivered') {
+      if (!orderCheck) {
+        Alert.alert('Error', 'Order not found. Please refresh and try again.');
+        setProcessing(false);
+        return;
+      }
+      if (orderCheck.status === 'delivered') {
         Alert.alert('Already Delivered', 'This order has already been marked as delivered.');
         setProcessing(false);
         return;
@@ -210,7 +215,7 @@ export const BuildingDeliveriesScreen = ({ route, navigation }: DistributorScree
         .from('customers')
         .select('id, wallet_balance')
         .eq('user_id', delivery.customer_id)
-        .single();
+        .maybeSingle();
 
       if (customerError) throw customerError;
 
@@ -257,7 +262,7 @@ export const BuildingDeliveriesScreen = ({ route, navigation }: DistributorScree
         .from('customers')
         .select('wallet_balance')
         .eq('user_id', delivery.customer_id)
-        .single();
+        .maybeSingle();
 
       const newBalance = updatedCustomer?.wallet_balance || 0;
 

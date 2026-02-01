@@ -11,6 +11,7 @@ import * as Linking from 'expo-linking';
 import { Platform } from 'react-native';
 import { AuthService } from './src/services/auth/authService';
 import { initSentry, setSentryUser, Sentry } from './src/services/sentry';
+import { useNotifications } from './src/hooks/useNotifications';
 
 // Initialize Sentry immediately for crash tracking
 initSentry();
@@ -19,6 +20,9 @@ function AppContent() {
   const { isLoading, loadUserFromStorage } = useAuthStore();
   // Guard to prevent multiple OAuth exchanges causing 429
   const handledOnceRef = useRef(false);
+  
+  // Initialize push notifications (registers token when user is logged in)
+  useNotifications();
 
   useEffect(() => {
     loadUserFromStorage();

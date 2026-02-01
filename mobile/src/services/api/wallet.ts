@@ -46,6 +46,8 @@ export class WalletService {
 
   /**
    * Get customer wallet balance - simple direct query
+   * Returns 0 on error for backwards compatibility.
+   * For error handling, use getBalanceOrThrow() instead.
    */
   static async getBalance(userId: string): Promise<number> {
     const validationError = this.validateUserId(userId);
@@ -73,6 +75,34 @@ export class WalletService {
       console.error('Error fetching wallet balance:', error);
       return 0;
     }
+  }
+
+  /**
+   * Get customer wallet balance - throws on error.
+   * Use this when you need to handle errors explicitly.
+   */
+  static async getBalanceOrThrow(userId: string): Promise<number> {
+    const validationError = this.validateUserId(userId);
+    if (validationError) {
+      throw new Error(`Invalid user ID: ${validationError}`);
+    }
+
+    const { data, error } = await supabase
+      .from('customers')
+      .select('wallet_balance')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`Failed to fetch wallet balance: ${error.message}`);
+    }
+
+    if (!data) {
+      await this.ensureCustomerExists(userId);
+      return 0;
+    }
+
+    return data.wallet_balance || 0;
   }
 
   /**

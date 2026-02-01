@@ -13,14 +13,12 @@ import { DistributorAssignmentScreen } from '../screens/admin/DistributorAssignm
 import { PayoutManagementScreen } from '../screens/admin/PayoutManagementScreen';
 import { OrderAssignmentScreen } from '../screens/admin/OrderAssignmentScreen';
 import { CreateManualOrderScreen } from '../screens/admin/CreateManualOrderScreen';
-import { SupplierManagementScreen } from '../screens/admin/SupplierManagementScreen';
-import { PurchaseOrdersScreen } from '../screens/admin/PurchaseOrdersScreen';
-import { SupplierPaymentsScreen } from '../screens/admin/SupplierPaymentsScreen';
-import { InventoryMovementScreen } from '../screens/admin/InventoryMovementScreen';
 import { StockManagementScreen } from '../screens/admin/StockManagementScreen';
 import { AdminSupportScreen } from '../screens/admin/AdminSupportScreen';
 import { RevenueAnalyticsScreen } from '../screens/admin/RevenueAnalyticsScreen';
 import { ActivationCodesScreen } from '../screens/admin/ActivationCodesScreen';
+import { PendingAddressChangesScreen } from '../screens/admin/PendingAddressChangesScreen';
+import { SocietyDetailScreen } from '../screens/admin/SocietyDetailScreen';
 
 const Stack = createNativeStackNavigator<AdminStackParamList>();
 
@@ -46,16 +44,25 @@ export const AdminNavigator = () => {
       <Stack.Screen name="PayoutManagement" component={PayoutManagementScreen} />
       <Stack.Screen name="OrderAssignment" component={OrderAssignmentScreen} />
       <Stack.Screen name="CreateManualOrder" component={CreateManualOrderScreen} />
-      <Stack.Screen name="SupplierManagement" component={SupplierManagementScreen} />
-      <Stack.Screen name="PurchaseOrders" component={PurchaseOrdersScreen} />
-      <Stack.Screen name="SupplierPayments" component={SupplierPaymentsScreen} />
-      <Stack.Screen name="InventoryMovements" component={InventoryMovementScreen} />
       <Stack.Screen name="StockManagement" component={StockManagementScreen} />
       <Stack.Screen name="RevenueAnalytics" component={RevenueAnalyticsScreen} />
       <Stack.Screen name="ActivationCodes" component={ActivationCodesScreen} />
+      <Stack.Screen name="SocietyDetail">
+        {({ navigation, route }) => (
+          <SocietyDetailScreen 
+            societyId={route.params?.societyId || ''} 
+            onBack={() => navigation.goBack()} 
+          />
+        )}
+      </Stack.Screen>
       <Stack.Screen name="AdminSupport">
         {({ navigation }) => (
           <AdminSupportScreen onBack={() => navigation.goBack()} />
+        )}
+      </Stack.Screen>
+      <Stack.Screen name="PendingAddressChanges">
+        {({ navigation }) => (
+          <PendingAddressChangesScreen onBack={() => navigation.goBack()} />
         )}
       </Stack.Screen>
     </Stack.Navigator>

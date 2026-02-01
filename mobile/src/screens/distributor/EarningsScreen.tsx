@@ -50,14 +50,14 @@ export const EarningsScreen = ({ navigation }: DistributorScreenProps<'Earnings'
     const userId = await getAuthUserId();
     if (!userId) return;
 
-    const { data: distributor } = await supabase
+    const { data: distributor, error: distError } = await supabase
       .from('distributors')
       .select('id')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
-    if (!distributor?.id) {
-      setError('Distributor not found');
+    if (distError || !distributor?.id) {
+      setError('Distributor profile not found');
       setLoading(false);
       return;
     }

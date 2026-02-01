@@ -202,3 +202,48 @@ export const cdn = {
   brand: (brandId: string, file: string = 'logo.png') =>
     `${cdnBase}/product-images/brands/${brandId}/${file}`,
 };
+
+// ============================================================================
+// Product Helpers
+// ============================================================================
+
+/**
+ * Get product-appropriate emoji based on category and name
+ * Used across product cards and subscription screens
+ */
+export const getProductEmoji = (category: string, name: string): string => {
+  const c = category?.toLowerCase() || '';
+  const n = name?.toLowerCase() || '';
+  
+  // Milk products
+  if (c === 'milk' || n.includes('milk')) return '🥛';
+  
+  // Dairy products
+  if (n.includes('curd') || n.includes('yogurt') || n.includes('dahi')) return '🥄';
+  if (n.includes('paneer') || n.includes('cheese')) return '🧀';
+  if (n.includes('butter')) return '🧈';
+  if (n.includes('ghee')) return '🫙';
+  
+  // Eggs
+  if (c === 'eggs' || n.includes('egg')) return '🥚';
+  
+  // Bread & Bakery
+  if (c === 'bakery' || n.includes('bread') || n.includes('pav')) return '🍞';
+  if (n.includes('croissant') || n.includes('bun')) return '🥐';
+  
+  // Ready to cook
+  if (n.includes('batter') || n.includes('dosa') || n.includes('idli')) return '🍛';
+  if (n.includes('dough') || n.includes('chapati') || n.includes('roti')) return '🫓';
+  
+  // Beverages
+  if (c === 'beverages' || n.includes('buttermilk') || n.includes('lassi')) return '🥤';
+  if (n.includes('coffee')) return '☕';
+  if (n.includes('juice')) return '🧃';
+  
+  // Essentials
+  if (n.includes('newspaper')) return '📰';
+  if (n.includes('flower')) return '💐';
+  
+  // Default
+  return '📦';
+};

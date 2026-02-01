@@ -13,11 +13,73 @@ export interface CalendarEvent {
   status: 'scheduled' | 'delivered' | 'skipped' | 'paused' | 'missed' | 'pending' | 'assigned' | 'in_transit';
 }
 
+// RPC response type
+interface DeliveryRpcResponse {
+  success: boolean;
+  error?: string;
+  message: string;
+  orders_updated?: number;
+  orders_created?: number;
+  days_skipped?: number;
+}
+
 export const DeliveryService = {
   async getCalendar(customerId: string, startDate: string, endDate: string): Promise<CalendarEvent[]> {
     // Since the remote DB schema may differ, go directly to subscriptions
     // to generate calendar events
     return await getCalendarFromSubscriptions(customerId, startDate, endDate);
+  },
+
+  /**
+   * Skip delivery for a specific date (server-side RPC)
+   */
+  async skipDelivery(userId: string, deliveryDate: Date, reason?: string): Promise<DeliveryRpcResponse> {
+    const dateStr = getLocalDateString(deliveryDate);
+    const { data, error } = await supabase.rpc('skip_delivery', {
+      p_user_id: userId,
+      p_delivery_date: dateStr,
+      p_reason: reason || 'Skipped by customer',
+    });
+
+    if (error) {
+      throw new Error(error.message || 'Failed to skip delivery');
+    }
+    return data as DeliveryRpcResponse;
+  },
+
+  /**
+   * Resume (unskip) delivery for a specific date (server-side RPC)
+   */
+  async unskipDelivery(userId: string, deliveryDate: Date): Promise<DeliveryRpcResponse> {
+    const dateStr = getLocalDateString(deliveryDate);
+    const { data, error } = await supabase.rpc('unskip_delivery', {
+      p_user_id: userId,
+      p_delivery_date: dateStr,
+    });
+
+    if (error) {
+      throw new Error(error.message || 'Failed to resume delivery');
+    }
+    return data as DeliveryRpcResponse;
+  },
+
+  /**
+   * Apply vacation (skip multiple dates) - server-side RPC
+   */
+  async applyVacation(userId: string, startDate: Date, endDate: Date, reason?: string): Promise<DeliveryRpcResponse> {
+    const startStr = getLocalDateString(startDate);
+    const endStr = getLocalDateString(endDate);
+    const { data, error } = await supabase.rpc('apply_vacation', {
+      p_user_id: userId,
+      p_start_date: startStr,
+      p_end_date: endStr,
+      p_reason: reason || 'On vacation',
+    });
+
+    if (error) {
+      throw new Error(error.message || 'Failed to apply vacation');
+    }
+    return data as DeliveryRpcResponse;
   },
 };
 

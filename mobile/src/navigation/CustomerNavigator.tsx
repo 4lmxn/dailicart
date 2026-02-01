@@ -52,6 +52,7 @@ export const CustomerNavigator = () => {
           <CreateSubscriptionScreen
             product={route.params?.product}
             onBack={() => navigation.goBack()}
+            onNavigateToWallet={() => navigation.navigate('Wallet')}
             onComplete={() => {
               // Reset navigation stack to remove CreateSubscription from history
               navigation.reset({

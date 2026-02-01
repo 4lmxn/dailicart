@@ -27,15 +27,10 @@ import { CustomerAdminService } from '../../services/api/customers';
 import { supabase } from '../../services/supabase';
 import { useAdminDashboardStore } from '../../store/adminDashboardStore';
 import { useNavigation } from '@react-navigation/native';
-import { CustomerDetailScreen } from './CustomerDetailScreen';
-import { ProductManagementScreen } from './ProductManagementScreen';
-import { SocietyDetailScreen } from './SocietyDetailScreen';
-import { DistributorDetailScreen } from './DistributorDetailScreen';
-import { SubscriptionDetailScreen } from './SubscriptionDetailScreen';
-import { BuildingAssignmentScreen } from './BuildingAssignmentScreen';
+import type { AdminStackParamList } from '../../navigation/types';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 type AdminTab = 'dashboard' | 'customers' | 'distributors' | 'products' | 'subscriptions' | 'societies' | 'stock' | 'analytics' | 'settings';
-type SubScreen = 'main' | 'customerDetail' | 'productManagement' | 'distributorDetail' | 'subscriptionDetail' | 'societyManagement' | 'societyDetail' | 'buildingAssignment';
 
 interface Customer {
   id: string;
@@ -82,13 +77,6 @@ export const AdminDashboardScreen: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<AdminTab>('dashboard');
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeScreen, setActiveScreen] = useState<SubScreen>('main');
-  
-  // Navigation state for detail screens
-  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
-  const [selectedDistributorId, setSelectedDistributorId] = useState<string | null>(null);
-  const [selectedSubscriptionId, setSelectedSubscriptionId] = useState<string | null>(null);
-  const [selectedSocietyId, setSelectedSocietyId] = useState<string | null>(null);
   
   // Data states
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -120,15 +108,10 @@ export const AdminDashboardScreen: React.FC = () => {
     loading: analyticsLoading,
     loadAnalytics,
   } = useAnalyticsStore();
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<NativeStackNavigationProp<AdminStackParamList>>();
   const toast = useToast();
   // New realtime dashboard store
   const { dashboard, fetchDashboard, subscribeRealtime } = useAdminDashboardStore();
-  
-  // Modal states
-  const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
-  const [selectedDistributor, setSelectedDistributor] = useState<any>(null);
-  const [selectedProduct, setSelectedProduct] = useState<any>(null);
 
   useEffect(() => {
     // Guard: only allow admins
@@ -529,26 +512,32 @@ export const AdminDashboardScreen: React.FC = () => {
           <Text style={styles.sectionTitle}>⚡ Needs Attention</Text>
           
           {(stats?.lowWalletCustomers || 0) > 0 && (
-            <TouchableOpacity style={styles.alertCard} onPress={() => setActiveTab('customers')}>
+            <TouchableOpacity style={styles.alertCard} onPress={() => {
+              setSelectedFilter('low');
+              setActiveTab('customers');
+            }}>
               <View style={[styles.alertIconContainer, { backgroundColor: '#FEF3C7' }]}>
                 <Text style={styles.alertIcon}>💸</Text>
               </View>
               <View style={styles.alertInfo}>
                 <Text style={styles.alertTitle}>Low Wallet</Text>
-                <Text style={styles.alertText}>{stats?.lowWalletCustomers} customers</Text>
+                <Text style={styles.alertText}>{stats?.lowWalletCustomers} customers need top-up</Text>
               </View>
               <Text style={styles.alertArrow}>›</Text>
             </TouchableOpacity>
           )}
 
           {(stats?.pausedSubscriptions || 0) > 0 && (
-            <TouchableOpacity style={styles.alertCard} onPress={() => setActiveTab('subscriptions')}>
+            <TouchableOpacity style={styles.alertCard} onPress={() => {
+              setSubscriptionFilter('paused');
+              setActiveTab('subscriptions');
+            }}>
               <View style={[styles.alertIconContainer, { backgroundColor: '#FEE2E2' }]}>
                 <Text style={styles.alertIcon}>⏸️</Text>
               </View>
               <View style={styles.alertInfo}>
                 <Text style={styles.alertTitle}>Paused Subs</Text>
-                <Text style={styles.alertText}>{stats?.pausedSubscriptions} subscriptions</Text>
+                <Text style={styles.alertText}>{stats?.pausedSubscriptions} due to low balance</Text>
               </View>
               <Text style={styles.alertArrow}>›</Text>
             </TouchableOpacity>
@@ -608,6 +597,16 @@ export const AdminDashboardScreen: React.FC = () => {
               <Text style={styles.quickActionEmoji}>🏘️</Text>
             </View>
             <Text style={styles.quickActionLabel}>Societies</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={styles.quickActionCard}
+            onPress={() => navigation.navigate('PendingAddressChanges')}
+          >
+            <View style={[styles.quickActionIcon, { backgroundColor: '#E0F2FE' }]}>
+              <Text style={styles.quickActionEmoji}>📍</Text>
+            </View>
+            <Text style={styles.quickActionLabel}>Address Changes</Text>
           </TouchableOpacity>
 
           <TouchableOpacity 
@@ -698,8 +697,7 @@ export const AdminDashboardScreen: React.FC = () => {
             key={customer.id}
             style={styles.listCard}
             onPress={() => {
-              setSelectedCustomerId(customer.id);
-              setActiveScreen('customerDetail');
+              navigation.navigate('CustomerDetail', { customerId: customer.id });
             }}
           >
             <View style={styles.listCardMain}>
@@ -801,8 +799,7 @@ export const AdminDashboardScreen: React.FC = () => {
               key={dist.id}
               style={styles.listCard}
               onPress={() => {
-                setSelectedDistributorId(dist.id);
-                setActiveScreen('distributorDetail');
+                navigation.navigate('DistributorDetail', { distributorId: dist.id });
               }}
             >
               <View style={styles.listCardMain}>
@@ -866,7 +863,7 @@ export const AdminDashboardScreen: React.FC = () => {
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Product Catalog</Text>
-          <TouchableOpacity onPress={() => setActiveScreen('productManagement')}>
+          <TouchableOpacity onPress={() => navigation.navigate('ProductManagement')}>
             <Text style={styles.linkText}>Manage Products</Text>
           </TouchableOpacity>
         </View>
@@ -875,8 +872,7 @@ export const AdminDashboardScreen: React.FC = () => {
             key={product.id}
             style={styles.listCard}
             onPress={() => {
-              setSelectedProduct(product);
-              setActiveScreen('productManagement');
+              navigation.navigate('ProductManagement');
             }}
           >
             <View style={styles.listCardMain}>
@@ -964,8 +960,7 @@ export const AdminDashboardScreen: React.FC = () => {
             <TouchableOpacity 
               style={styles.addButton}
               onPress={() => {
-                setSelectedSocietyId(null);
-                setActiveScreen('societyDetail');
+                navigation.navigate('SocietyDetail', { societyId: 'new' });
               }}
             >
               <Text style={styles.addButtonText}>+ Add New</Text>
@@ -986,8 +981,7 @@ export const AdminDashboardScreen: React.FC = () => {
                 key={society.id}
                 style={styles.listCard}
                 onPress={() => {
-                  setSelectedSocietyId(society.id);
-                  setActiveScreen('societyDetail');
+                  navigation.navigate('SocietyDetail', { societyId: society.id });
                 }}
               >
                 <View style={styles.listCardMain}>
@@ -1028,8 +1022,7 @@ export const AdminDashboardScreen: React.FC = () => {
                     style={[styles.quickBtn, styles.quickBtnPrimary]}
                     onPress={(e) => {
                       e.stopPropagation();
-                      setSelectedSocietyId(society.id);
-                      setActiveScreen('societyDetail');
+                      navigation.navigate('SocietyDetail', { societyId: society.id });
                     }}
                   >
                     <Text style={styles.quickBtnText}>View Details</Text>
@@ -1119,8 +1112,7 @@ export const AdminDashboardScreen: React.FC = () => {
             key={sub.id}
             style={styles.listCard}
             onPress={() => {
-              setSelectedSubscriptionId(sub.id);
-              setActiveScreen('subscriptionDetail');
+              navigation.navigate('SubscriptionDetail', { subscriptionId: sub.id });
             }}
           >
             <View style={styles.listCardMain}>
@@ -1461,18 +1453,6 @@ export const AdminDashboardScreen: React.FC = () => {
       case 'products':
         return renderProducts();
       case 'societies':
-        if (activeScreen === 'societyDetail' && selectedSocietyId) {
-          return (
-            <SocietyDetailScreen
-              societyId={selectedSocietyId}
-              onBack={() => {
-                setActiveScreen('main');
-                setSelectedSocietyId(null);
-                loadSocieties(); // Refresh after returning
-              }}
-            />
-          );
-        }
         return renderSocieties();
       case 'subscriptions':
         return renderSubscriptions();
@@ -1540,209 +1520,6 @@ export const AdminDashboardScreen: React.FC = () => {
       {/* Tab Content */}
       {renderTabContent()}
 
-      {/* Customer Detail Modal */}
-      <Modal visible={!!selectedCustomer} animationType="slide" transparent>
-        <Pressable style={styles.modalOverlay} onPress={() => setSelectedCustomer(null)}>
-          <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
-            {selectedCustomer && (
-              <>
-                <View style={styles.modalHeader}>
-                  <Text style={styles.modalTitle}>Customer Details</Text>
-                  <TouchableOpacity onPress={() => setSelectedCustomer(null)}>
-                    <Text style={styles.modalClose}>✕</Text>
-                  </TouchableOpacity>
-                </View>
-                <ScrollView>
-                  <View style={styles.modalSection}>
-                    <Text style={styles.modalSectionTitle}>Basic Info</Text>
-                    <Text style={styles.modalText}>Name: {selectedCustomer.name}</Text>
-                    <Text style={styles.modalText}>Phone: {selectedCustomer.phone}</Text>
-                    <Text style={styles.modalText}>Area: {selectedCustomer.area}</Text>
-                  </View>
-                  <View style={styles.modalSection}>
-                    <Text style={styles.modalSectionTitle}>Wallet & Subscriptions</Text>
-                    <Text style={styles.modalText}>Wallet Balance: {formatCurrency(selectedCustomer.wallet)}</Text>
-                    <Text style={styles.modalText}>Active Subscriptions: {selectedCustomer.subscriptions}</Text>
-                    <Text style={styles.modalText}>Status: {selectedCustomer.status}</Text>
-                  </View>
-                  <View style={styles.modalSection}>
-                    <Text style={styles.modalSectionTitle}>Actions</Text>
-                    <TouchableOpacity style={styles.modalButton}>
-                      <Text style={styles.modalButtonText}>💰 Adjust Wallet</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.modalButton}>
-                      <Text style={styles.modalButtonText}>📋 View Subscriptions</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.modalButton}>
-                      <Text style={styles.modalButtonText}>📧 Send Notification</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={[styles.modalButton, styles.modalButtonDanger]}>
-                      <Text style={[styles.modalButtonText, styles.modalButtonTextDanger]}>🚫 Block Customer</Text>
-                    </TouchableOpacity>
-                  </View>
-                </ScrollView>
-              </>
-            )}
-          </Pressable>
-        </Pressable>
-      </Modal>
-
-      {/* Distributor Detail Modal */}
-      <Modal visible={!!selectedDistributor} animationType="slide" transparent>
-        <Pressable style={styles.modalOverlay} onPress={() => setSelectedDistributor(null)}>
-          <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
-            {selectedDistributor && (
-              <>
-                <View style={styles.modalHeader}>
-                  <Text style={styles.modalTitle}>Distributor Details</Text>
-                  <TouchableOpacity onPress={() => setSelectedDistributor(null)}>
-                    <Text style={styles.modalClose}>✕</Text>
-                  </TouchableOpacity>
-                </View>
-                <ScrollView>
-                  <View style={styles.modalSection}>
-                    <Text style={styles.modalSectionTitle}>Basic Info</Text>
-                    <Text style={styles.modalText}>Name: {selectedDistributor.name}</Text>
-                    <Text style={styles.modalText}>Phone: {selectedDistributor.phone}</Text>
-                    <Text style={styles.modalText}>Zone: {selectedDistributor.zone}</Text>
-                  </View>
-                  <View style={styles.modalSection}>
-                    <Text style={styles.modalSectionTitle}>Performance Metrics</Text>
-                    <Text style={styles.modalText}>Today's Deliveries: {selectedDistributor.deliveries}</Text>
-                    <Text style={styles.modalText}>On-time Rate: {selectedDistributor.onTime}%</Text>
-                    <Text style={styles.modalText}>Rating: ⭐ {selectedDistributor.rating}</Text>
-                    <Text style={styles.modalText}>Collection: {formatCurrency(selectedDistributor.collection)}</Text>
-                  </View>
-                  <View style={styles.modalSection}>
-                    <Text style={styles.modalSectionTitle}>Actions</Text>
-                    <TouchableOpacity style={styles.modalButton}>
-                      <Text style={styles.modalButtonText}>📍 Assign Route</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.modalButton}>
-                      <Text style={styles.modalButtonText}>📦 Manage Inventory</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.modalButton}>
-                      <Text style={styles.modalButtonText}>💰 Settle Payment</Text>
-                    </TouchableOpacity>
-                  </View>
-                </ScrollView>
-              </>
-            )}
-          </Pressable>
-        </Pressable>
-      </Modal>
-
-      {/* Product Detail Modal */}
-      <Modal visible={!!selectedProduct} animationType="slide" transparent>
-        <Pressable style={styles.modalOverlay} onPress={() => setSelectedProduct(null)}>
-          <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
-            {selectedProduct && (
-              <>
-                <View style={styles.modalHeader}>
-                  <Text style={styles.modalTitle}>Product Details</Text>
-                  <TouchableOpacity onPress={() => setSelectedProduct(null)}>
-                    <Text style={styles.modalClose}>✕</Text>
-                  </TouchableOpacity>
-                </View>
-                <ScrollView>
-                  <View style={styles.modalSection}>
-                    <Text style={styles.modalSectionTitle}>Product Info</Text>
-                    <Text style={styles.modalText}>Name: {selectedProduct.name}</Text>
-                    <Text style={styles.modalText}>Brand: {selectedProduct.brand}</Text>
-                    <Text style={styles.modalText}>Category: {selectedProduct.category}</Text>
-                    <Text style={styles.modalText}>Price: {formatCurrency(selectedProduct.price)}</Text>
-                  </View>
-                  <View style={styles.modalSection}>
-                    <Text style={styles.modalSectionTitle}>Inventory & Sales</Text>
-                    <Text style={styles.modalText}>Stock: {selectedProduct.stock} units</Text>
-                    <Text style={styles.modalText}>Total Sales: {selectedProduct.sales} units</Text>
-                    <Text style={[styles.modalText, selectedProduct.stock < 300 && { color: theme.colors.warning }]}>
-                      Status: {selectedProduct.stock < 300 ? '⚠️ Low Stock' : '✅ In Stock'}
-                    </Text>
-                  </View>
-                  <View style={styles.modalSection}>
-                    <Text style={styles.modalSectionTitle}>Actions</Text>
-                    <TouchableOpacity style={styles.modalButton}>
-                      <Text style={styles.modalButtonText}>✏️ Edit Product</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.modalButton}>
-                      <Text style={styles.modalButtonText}>📦 Adjust Inventory</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.modalButton}>
-                      <Text style={styles.modalButtonText}>💰 Update Pricing</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={[styles.modalButton, styles.modalButtonDanger]}>
-                      <Text style={[styles.modalButtonText, styles.modalButtonTextDanger]}>🗑️ Delete Product</Text>
-                    </TouchableOpacity>
-                  </View>
-                </ScrollView>
-              </>
-            )}
-          </Pressable>
-        </Pressable>
-      </Modal>
-
-      {/* Customer Detail Screen Modal */}
-      {activeScreen === 'customerDetail' && selectedCustomerId && (
-        <Modal visible={true} animationType="slide" presentationStyle="fullScreen">
-          {/* Use navigator-style props simulation */}
-          <CustomerDetailScreen
-            route={{ key: 'CustomerDetail', name: 'CustomerDetail', params: { customerId: selectedCustomerId } } as any}
-            navigation={{ goBack: () => { setActiveScreen('main'); setSelectedCustomerId(null); loadCustomers(); } } as any}
-          />
-        </Modal>
-      )}
-
-      {/* Product Management Screen Modal */}
-      {activeScreen === 'productManagement' && (
-        <Modal visible={true} animationType="slide" presentationStyle="fullScreen">
-          <ProductManagementScreen
-            onClose={() => {
-              setActiveScreen('main');
-              setSelectedProduct(null);
-              loadProducts(); // Refresh products list
-            }}
-          />
-        </Modal>
-      )}
-
-      {/* Distributor Detail Screen Modal */}
-      {activeScreen === 'distributorDetail' && selectedDistributorId && (
-        <Modal visible={true} animationType="slide" presentationStyle="fullScreen">
-          <DistributorDetailScreen
-            route={{ key: 'DistributorDetail', name: 'DistributorDetail', params: { distributorId: selectedDistributorId } } as any}
-            navigation={{ 
-              goBack: () => { setActiveScreen('main'); setSelectedDistributorId(null); loadDistributors(); },
-              navigate: (screen: string, params: any) => {
-                if (screen === 'BuildingAssignment') {
-                  setSelectedDistributorId(params.distributorId);
-                  setActiveScreen('buildingAssignment');
-                }
-              }
-            } as any}
-          />
-        </Modal>
-      )}
-
-      {/* Building Assignment Screen Modal */}
-      {activeScreen === 'buildingAssignment' && selectedDistributorId && (
-        <Modal visible={true} animationType="slide" presentationStyle="fullScreen">
-          <BuildingAssignmentScreen
-            route={{ key: 'BuildingAssignment', name: 'BuildingAssignment', params: { distributorId: selectedDistributorId, distributorName: distributors.find(d => d.id === selectedDistributorId)?.name || 'Distributor' } } as any}
-            navigation={{ goBack: () => { setActiveScreen('distributorDetail'); } } as any}
-          />
-        </Modal>
-      )}
-
-      {/* Subscription Detail Screen Modal */}
-      {activeScreen === 'subscriptionDetail' && selectedSubscriptionId && (
-        <Modal visible={true} animationType="slide" presentationStyle="fullScreen">
-          <SubscriptionDetailScreen
-            route={{ key: 'SubscriptionDetail', name: 'SubscriptionDetail', params: { subscriptionId: selectedSubscriptionId } } as any}
-            navigation={{ goBack: () => { setActiveScreen('main'); setSelectedSubscriptionId(null); loadSubscriptions(); } } as any}
-          />
-        </Modal>
-      )}
       {/* Wallet Recharge Modal */}
       <Modal visible={walletModalVisible} animationType="fade" transparent>
         <Pressable style={styles.modalOverlay} onPress={() => setWalletModalVisible(false)}>

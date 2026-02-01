@@ -19,6 +19,16 @@ import { useAuthStore } from '../../store/authStore';
 import { DeliveryService } from '../../services/api/deliveries';
 import { supabase } from '../../services/supabase';
 
+// Error message mapping for user-friendly display
+const ERROR_MESSAGES: Record<string, string> = {
+  PAST_DATE: 'You cannot modify a past delivery.',
+  CUTOFF_PASSED: 'Same-day delivery modifications are not allowed after 4 AM. Please contact support for assistance.',
+  ALREADY_SKIPPED: 'This day is already skipped.',
+  NO_SKIPPED_ORDERS: 'No skipped orders found for this date.',
+  INVALID_RANGE: 'End date must be after start date.',
+  TOO_LONG: 'Vacation cannot exceed 30 days.',
+};
+
 const MONTHLY_SERVICE_CHARGE = 80;
 
 interface Product {
@@ -274,25 +284,6 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({ onBack }) => {
   const handleSkipDay = async () => {
     if (!selectedDate || !user?.id) return;
 
-    const dateStr = getLocalDateString(selectedDate);
-
-    // Check if date is in the past
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    if (selectedDate < today) {
-      Alert.alert('Cannot Skip', 'You cannot skip a past delivery.');
-      return;
-    }
-
-    // Check if same-day cutoff has passed
-    if (isSameDayCutoffPassed(selectedDate)) {
-      Alert.alert(
-        'Cutoff Time Passed',
-        'Same-day delivery modifications are not allowed after 4 AM. Please contact support for assistance.'
-      );
-      return;
-    }
-
     Alert.alert(
       'Skip Delivery',
       `Skip delivery for ${selectedDate.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short' })}?\n\nNo charges will apply for this day.`,
@@ -303,83 +294,16 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({ onBack }) => {
           style: 'destructive',
           onPress: async () => {
             try {
-              // First, check if orders exist for this date (any status)
-              const { data: existingOrders, error: checkError } = await supabase
-                .from('orders')
-                .select('id, status')
-                .eq('user_id', user.id)
-                .eq('delivery_date', dateStr);
-
-              if (checkError) throw checkError;
-
-              // Check if already skipped
-              const alreadySkipped = existingOrders?.every(o => o.status === 'skipped');
-              if (alreadySkipped && existingOrders && existingOrders.length > 0) {
-                Alert.alert('Already Skipped', 'This day is already skipped.');
+              const result = await DeliveryService.skipDelivery(user.id, selectedDate);
+              
+              if (!result.success) {
+                const message = ERROR_MESSAGES[result.error || ''] || result.message;
+                Alert.alert('Cannot Skip', message);
                 return;
-              }
-
-              if (existingOrders && existingOrders.length > 0) {
-                // Update existing orders to 'skipped' (only those that can be skipped)
-                const { error } = await supabase
-                  .from('orders')
-                  .update({ status: 'skipped', skip_reason: 'Skipped by customer' })
-                  .eq('user_id', user.id)
-                  .eq('delivery_date', dateStr)
-                  .in('status', ['scheduled', 'pending', 'assigned', 'in_transit']);
-
-                if (error) throw error;
-              } else {
-                // No orders exist yet - create skipped orders from active subscriptions
-                const { data: subscriptions } = await supabase
-                  .from('subscriptions')
-                  .select('id, product_id, quantity, address_id')
-                  .eq('user_id', user.id)
-                  .eq('status', 'active');
-
-                if (subscriptions && subscriptions.length > 0) {
-                  // Get product prices
-                  const productIds = subscriptions.map(s => s.product_id);
-                  const { data: products } = await supabase
-                    .from('products')
-                    .select('id, price')
-                    .in('id', productIds);
-
-                  const priceMap = new Map((products || []).map(p => [p.id, p.price]));
-
-                  // Generate unique order numbers
-                  const timestamp = Date.now();
-
-                  // Create skipped orders for each subscription
-                  const ordersToInsert = subscriptions.map((sub, idx) => {
-                    const unitPrice = priceMap.get(sub.product_id) || 0;
-                    const qty = sub.quantity || 1;
-                    return {
-                      order_number: `ORD-${timestamp}-${idx}-${Math.random().toString(36).substr(2, 6)}`,
-                      user_id: user.id,
-                      address_id: sub.address_id,
-                      product_id: sub.product_id,
-                      quantity: qty,
-                      unit_price: unitPrice,
-                      total_amount: qty * unitPrice,
-                      delivery_date: dateStr,
-                      status: 'skipped',
-                      subscription_id: sub.id,
-                      skip_reason: 'Skipped by customer',
-                    };
-                  });
-
-                  const { error: insertError } = await supabase
-                    .from('orders')
-                    .insert(ordersToInsert);
-
-                  if (insertError) throw insertError;
-                }
               }
 
               Alert.alert('✓ Delivery Skipped', `Your delivery for ${selectedDate.toLocaleDateString('en-IN')} has been skipped. No charges will apply.`);
               setSelectedDate(null);
-              // Small delay to ensure DB update propagates, then refresh
               setTimeout(() => loadMonth(currentDate), 300);
             } catch (e: any) {
               Alert.alert('Error', e.message || 'Failed to skip delivery');
@@ -393,25 +317,6 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({ onBack }) => {
   const handleUnskipDay = async () => {
     if (!selectedDate || !user?.id) return;
 
-    const dateStr = getLocalDateString(selectedDate);
-
-    // Check if date is in the past
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    if (selectedDate < today) {
-      Alert.alert('Cannot Resume', 'You cannot resume a past delivery.');
-      return;
-    }
-
-    // Check if same-day cutoff has passed
-    if (isSameDayCutoffPassed(selectedDate)) {
-      Alert.alert(
-        'Cutoff Time Passed',
-        'Same-day delivery modifications are not allowed after 4 AM. Please contact support for assistance.'
-      );
-      return;
-    }
-
     Alert.alert(
       'Resume Delivery',
       `Resume delivery for ${selectedDate.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short' })}?`,
@@ -421,15 +326,13 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({ onBack }) => {
           text: 'Resume',
           onPress: async () => {
             try {
-              // Update skipped orders back to scheduled
-              const { error } = await supabase
-                .from('orders')
-                .update({ status: 'scheduled', skip_reason: null })
-                .eq('user_id', user.id)
-                .eq('delivery_date', dateStr)
-                .eq('status', 'skipped');
-
-              if (error) throw error;
+              const result = await DeliveryService.unskipDelivery(user.id, selectedDate);
+              
+              if (!result.success) {
+                const message = ERROR_MESSAGES[result.error || ''] || result.message;
+                Alert.alert('Cannot Resume', message);
+                return;
+              }
 
               Alert.alert('✓ Delivery Resumed', `Your delivery for ${selectedDate.toLocaleDateString('en-IN')} has been resumed.`);
               setSelectedDate(null);
@@ -529,22 +432,23 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({ onBack }) => {
     const dateStr = getLocalDateString(selectedDate);
 
     try {
-      // Get user's address for new orders
-      const { data: userAddress } = await supabase
+      // Get user's default address for new orders - use maybeSingle to handle missing address
+      const { data: userAddress, error: addrError } = await supabase
         .from('addresses')
         .select('id')
         .eq('user_id', user.id)
         .eq('is_default', true)
-        .single();
+        .maybeSingle();
 
       let addressId = userAddress?.id;
       if (!addressId) {
+        // Try to get any address if no default set
         const { data: anyAddress } = await supabase
           .from('addresses')
           .select('id')
           .eq('user_id', user.id)
           .limit(1)
-          .single();
+          .maybeSingle();
         addressId = anyAddress?.id;
       }
 
@@ -600,7 +504,7 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({ onBack }) => {
             .from('products')
             .select('price')
             .eq('id', item.productId)
-            .single();
+            .maybeSingle();
 
           const serverPrice = productData?.price || item.price;
 
@@ -619,7 +523,7 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({ onBack }) => {
             .from('products')
             .select('price')
             .eq('id', item.productId)
-            .single();
+            .maybeSingle();
 
           const serverPrice = productData?.price || item.price;
 
@@ -1081,35 +985,27 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({ onBack }) => {
 
                   setApplyingVacation(true);
                   try {
+                    // Use server-side RPC for vacation
+                    const result = await DeliveryService.applyVacation(user.id, vacationStart, vacationEnd, 'Vacation mode');
+                    
+                    if (!result.success) {
+                      const message = ERROR_MESSAGES[result.error || ''] || result.message;
+                      Alert.alert('Cannot Apply Vacation', message);
+                      return;
+                    }
+
+                    // Also update subscriptions with pause dates for calendar display
                     const startStr = getLocalDateString(vacationStart);
                     const endStr = getLocalDateString(vacationEnd);
-
-                    // Update all active subscriptions with pause dates
-                    const { error } = await supabase
+                    await supabase
                       .from('subscriptions')
-                      .update({
-                        pause_start_date: startStr,
-                        pause_end_date: endStr,
-                      })
+                      .update({ pause_start_date: startStr, pause_end_date: endStr })
                       .eq('user_id', user.id)
                       .eq('status', 'active');
 
-                    if (error) throw error;
-
-                    // Also mark any already-generated orders in the vacation period as skipped
-                    const { error: ordersError } = await supabase
-                      .from('orders')
-                      .update({ status: 'skipped', skip_reason: 'Vacation mode' })
-                      .eq('user_id', user.id)
-                      .gte('delivery_date', startStr)
-                      .lte('delivery_date', endStr)
-                      .in('status', ['scheduled', 'pending', 'assigned']);
-
-                    if (ordersError) console.error('Failed to skip vacation orders:', ordersError);
-
                     Alert.alert(
                       '🏖️ Vacation Mode Applied!',
-                      `Your deliveries are paused from ${vacationStart.toLocaleDateString('en-IN')} to ${vacationEnd.toLocaleDateString('en-IN')}. Any scheduled orders in this period have been cancelled.`,
+                      `Your deliveries are paused from ${vacationStart.toLocaleDateString('en-IN')} to ${vacationEnd.toLocaleDateString('en-IN')}. ${result.days_skipped || 0} days skipped.`,
                       [{
                         text: 'OK', onPress: () => {
                           setShowVacationModal(false);

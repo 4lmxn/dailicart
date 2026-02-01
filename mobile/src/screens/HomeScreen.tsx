@@ -44,6 +44,10 @@ export const HomeScreen: React.FC = () => {
             setSelectedProduct(null);
             setCurrentScreen('home');
           }}
+          onNavigateToWallet={() => {
+            setSelectedProduct(null);
+            setCurrentScreen('home');
+          }}
         />
       );
     }

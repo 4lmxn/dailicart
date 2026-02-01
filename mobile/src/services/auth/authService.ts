@@ -97,11 +97,11 @@ export class AuthService {
         .from('users')
         .select('*')
         .eq('id', sbUser.id)
-        .single();
+        .maybeSingle();
 
       let authUser: AuthUser;
 
-      if (userRowErr && userRowErr.code !== 'PGRST116') {
+      if (userRowErr) {
         // Unexpected DB error
         console.warn('User table lookup error', {
           code: userRowErr.code,
@@ -290,10 +290,9 @@ export class AuthService {
         .from('users')
         .select('*')
         .eq('phone', formattedPhone)
-        .single();
+        .maybeSingle();
 
-      if (profileError && profileError.code !== 'PGRST116') {
-        // PGRST116 = no rows returned (user doesn't exist yet)
+      if (profileError) {
         console.error('Profile fetch error:', profileError);
       }
 

@@ -45,16 +45,13 @@ export type AdminStackParamList = {
   PayoutManagement: undefined;
   OrderAssignment: undefined;
   CreateManualOrder: undefined;
-  SupplierManagement: undefined;
-  PurchaseOrders: undefined;
-  SupplierPayments: undefined;
-  InventoryMovements: undefined;
   BuildingAssignment: { distributorId: string; distributorName?: string };
   SocietyDetail: { societyId: string };
   StockManagement: undefined;
   AdminSupport: undefined;
   RevenueAnalytics: undefined;
   ActivationCodes: undefined;
+  PendingAddressChanges: undefined;
 };
 
 export type AdminScreenProps<T extends keyof AdminStackParamList> = NativeStackScreenProps<

@@ -68,9 +68,14 @@ export const SocietyDetailScreen: React.FC<SocietyDetailScreenProps> = ({ societ
         .from('societies')
         .select('*')
         .eq('id', societyId)
-        .single();
+        .maybeSingle();
 
       if (societyErr) throw societyErr;
+      if (!societyData) {
+        Alert.alert('Error', 'Society not found');
+        onBack();
+        return;
+      }
       setSociety(societyData);
 
       // Fetch towers
@@ -157,7 +162,7 @@ export const SocietyDetailScreen: React.FC<SocietyDetailScreenProps> = ({ societ
         `)
         .or(`unit_id.eq.${unit.id},apartment_number.eq.${unit.number}`)
         .limit(1)
-        .single();
+        .maybeSingle();
 
       if (addrError && addrError.code !== 'PGRST116') throw addrError;
 
@@ -167,7 +172,7 @@ export const SocietyDetailScreen: React.FC<SocietyDetailScreenProps> = ({ societ
           .from('customers')
           .select('id, wallet_balance')
           .eq('user_id', addressData.user_id)
-          .single();
+          .maybeSingle();
 
         // Fetch active subscriptions count using user_id
         const { data: subsData } = await supabase

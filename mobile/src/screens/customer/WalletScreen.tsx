@@ -89,18 +89,23 @@ export const WalletScreen: React.FC<WalletScreenProps> = ({ onBack }) => {
         throw new Error('Please login to view wallet');
       }
 
-      // Fetch wallet balance
+      // Fetch wallet balance - use maybeSingle to handle missing customer row
       const { data: profile, error: profileError } = await supabase
         .from('customers')
         .select('wallet_balance, auto_deduct')
         .eq('user_id', authUser.id)
-        .single();
+        .maybeSingle();
 
       if (profileError) throw profileError;
 
+      // Handle case where customer profile doesn't exist yet
       if (profile) {
         setWalletBalance(profile.wallet_balance || 0);
         setAutoRechargeEnabled(profile.auto_deduct || false);
+      } else {
+        // New user without customer record - show 0 balance
+        setWalletBalance(0);
+        setAutoRechargeEnabled(false);
       }
 
       // Load transaction history
@@ -165,11 +170,18 @@ export const WalletScreen: React.FC<WalletScreenProps> = ({ onBack }) => {
                 return;
               }
 
-              const { data: profile } = await supabase
+              const { data: profile, error: profileError } = await supabase
                 .from('users')
                 .select('id,name,phone,email')
                 .eq('id', user.id)
-                .single();
+                .maybeSingle();
+
+              if (profileError || !profile) {
+                Alert.alert('Error', 'Unable to load user profile. Please try again.');
+                setPaymentInProgress(false);
+                setVerificationStatus('idle');
+                return;
+              }
 
               // Generate idempotency key to prevent duplicate charges
               const idempotencyKey = generateIdempotencyKey(user.id, 'razorpay');
@@ -209,7 +221,7 @@ export const WalletScreen: React.FC<WalletScreenProps> = ({ onBack }) => {
                     .from('customers')
                     .select('wallet_balance')
                     .eq('user_id', user.id)
-                    .single();
+                    .maybeSingle();
 
                   const updatedBalance = updatedProfile?.wallet_balance || 0;
 

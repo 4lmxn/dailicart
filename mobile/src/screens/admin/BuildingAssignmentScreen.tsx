@@ -166,9 +166,10 @@ export const BuildingAssignmentScreen: React.FC<AdminScreenProps<'BuildingAssign
         .from('society_towers')
         .select('society_id')
         .eq('id', towerId)
-        .single();
+        .maybeSingle();
       
       if (towerError) throw towerError;
+      if (!towerData) throw new Error('Tower not found');
       
       // Insert into distributor_building_assignments
       const { error } = await supabase

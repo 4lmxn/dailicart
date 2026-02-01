@@ -80,11 +80,16 @@ export const DistributorHomeScreen = ({ navigation }: DistributorScreenProps<'Di
     const userId = await getAuthUserId();
     if (!userId) return;
 
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('distributors')
       .select('id, users(name)')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
+
+    if (error) {
+      console.error('Error loading distributor info:', error);
+      return;
+    }
 
     if (data) {
       setDistributorId(data.id);
@@ -96,13 +101,13 @@ export const DistributorHomeScreen = ({ navigation }: DistributorScreenProps<'Di
     const userId = await getAuthUserId();
     if (!userId) return;
 
-    const { data: dist } = await supabase
+    const { data: dist, error: distError } = await supabase
       .from('distributors')
       .select('id')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
-    if (!dist?.id) return;
+    if (distError || !dist?.id) return;
 
     const today = getLocalDateString();
     const weekAgo = getLocalDateOffsetString(-7);

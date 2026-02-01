@@ -16,6 +16,7 @@ import { AppLayout } from '../../components/AppLayout';
 import { AppBar } from '../../components/AppBar';
 import { theme } from '../../theme';
 import { formatCurrency, formatQuantity, getLocalDateString } from '../../utils/helpers';
+import { WEEK_DAYS } from '../../constants';
 import { useAuthStore } from '../../store/authStore';
 import { SubscriptionService } from '../../services/api/subscriptions';
 import { supabase } from '../../services/supabase';
@@ -44,16 +45,6 @@ interface UISubscription {
   missedDeliveries: number;
 }
 
-const WEEK_DAYS = [
-  { id: 0, short: 'S', full: 'Sunday' },
-  { id: 1, short: 'M', full: 'Monday' },
-  { id: 2, short: 'T', full: 'Tuesday' },
-  { id: 3, short: 'W', full: 'Wednesday' },
-  { id: 4, short: 'T', full: 'Thursday' },
-  { id: 5, short: 'F', full: 'Friday' },
-  { id: 6, short: 'S', full: 'Saturday' },
-];
-
 interface MySubscriptionsScreenProps {
   onBack: () => void;
 }
@@ -71,8 +62,11 @@ export const MySubscriptionsScreen: React.FC<MySubscriptionsScreenProps> = ({ on
   const [showDeliveryHistoryModal, setShowDeliveryHistoryModal] = useState(false);
   const [deliveryHistory, setDeliveryHistory] = useState<Array<{date: string; status: string; time: string}>>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
-  const [modifyQuantity, setModifyQuantity] = useState('1L');
+  const [modifyQuantity, setModifyQuantity] = useState(1); // Changed to number
+  const [modifyUnit, setModifyUnit] = useState('L'); // Store unit separately
   const [modifyTime, setModifyTime] = useState<'morning' | 'evening'>('morning');
+  const [modifyFrequency, setModifyFrequency] = useState<'daily' | 'alternate' | 'custom'>('daily');
+  const [modifyCustomDays, setModifyCustomDays] = useState<number[]>([]);
   const [pauseDays, setPauseDays] = useState('7');
   const [newFrequency, setNewFrequency] = useState<'daily' | 'alternate' | 'custom'>('daily');
   const [selectedDays, setSelectedDays] = useState<number[]>([]);
@@ -199,28 +193,53 @@ export const MySubscriptionsScreen: React.FC<MySubscriptionsScreenProps> = ({ on
 
   const handleModify = (sub: UISubscription) => {
     setSelectedSub(sub);
-    setModifyQuantity(sub.quantity);
+    // Parse quantity from string like "1L" or "500ml" or "2 packets"
+    const quantityMatch = sub.quantity.match(/^(\d+\.?\d*)/);
+    const quantityValue = quantityMatch ? parseFloat(quantityMatch[1]) : 1;
+    // Extract unit from quantity string
+    const unitMatch = sub.quantity.match(/[a-zA-Z]+$/);
+    const unitValue = unitMatch ? unitMatch[0] : 'L';
+    setModifyQuantity(quantityValue);
+    setModifyUnit(unitValue);
     setModifyTime(sub.deliveryTime);
+    setModifyFrequency(sub.frequency);
+    setModifyCustomDays(sub.customDays || []);
     setShowModifyModal(true);
   };
 
   const applyModification = async () => {
     if (!selectedSub) return;
     try {
-      // Parse quantity from string like "1L" or "500ml"
-      const quantityMatch = modifyQuantity.match(/^(\d+\.?\d*)/);
-      const quantityValue = quantityMatch ? parseFloat(quantityMatch[1]) : 1;
-
-      await SubscriptionService.updateSubscription(selectedSub.id, {
-        quantity: quantityValue,
+      // Build update payload
+      const updatePayload: Parameters<typeof SubscriptionService.updateSubscription>[1] = {
+        quantity: modifyQuantity,
         deliveryTime: modifyTime,
-      });
+        frequency: modifyFrequency,
+      };
+      
+      // Include custom days if frequency is custom
+      if (modifyFrequency === 'custom') {
+        if (modifyCustomDays.length === 0) {
+          Alert.alert('Error', 'Please select at least one day for custom frequency.');
+          return;
+        }
+        updatePayload.customDays = modifyCustomDays;
+      }
+
+      await SubscriptionService.updateSubscription(selectedSub.id, updatePayload);
 
       // Update local state
+      const newQuantityString = `${modifyQuantity}${modifyUnit}`;
       setSubscriptions((prev) =>
         prev.map((s) =>
           s.id === selectedSub.id
-            ? { ...s, quantity: modifyQuantity, deliveryTime: modifyTime }
+            ? { 
+                ...s, 
+                quantity: newQuantityString, 
+                deliveryTime: modifyTime,
+                frequency: modifyFrequency,
+                customDays: modifyFrequency === 'custom' ? modifyCustomDays : undefined,
+              }
             : s
         )
       );
@@ -648,7 +667,7 @@ export const MySubscriptionsScreen: React.FC<MySubscriptionsScreenProps> = ({ on
         )}
       </ScrollView>
 
-      {/* Modify Modal */}
+      {/* Modify Modal - Combined quantity, delivery time, and frequency */}
       <Modal
         visible={showModifyModal}
         animationType="slide"
@@ -656,77 +675,149 @@ export const MySubscriptionsScreen: React.FC<MySubscriptionsScreenProps> = ({ on
         onRequestClose={() => setShowModifyModal(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Modify Subscription</Text>
-              <TouchableOpacity onPress={() => setShowModifyModal(false)}>
-                <Text style={styles.modalCloseButton}>✕</Text>
-              </TouchableOpacity>
-            </View>
+          <ScrollView 
+            style={styles.modalScrollView}
+            contentContainerStyle={styles.modalScrollContent}
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>✏️ Modify Subscription</Text>
+                <TouchableOpacity onPress={() => setShowModifyModal(false)}>
+                  <Text style={styles.modalCloseButton}>✕</Text>
+                </TouchableOpacity>
+              </View>
 
-            <Text style={styles.modalLabel}>Quantity</Text>
-            <View style={styles.quantityButtons}>
-              {['500ml', '1L', '1.5L', '2L'].map((qty) => (
+              {/* Product Info */}
+              <View style={styles.modifyProductInfo}>
+                <Text style={styles.modifyProductName}>{selectedSub?.productName}</Text>
+                <Text style={styles.modifyProductBrand}>{selectedSub?.brand}</Text>
+              </View>
+
+              {/* Quantity Section */}
+              <Text style={styles.modalLabel}>Quantity</Text>
+              <View style={styles.quantityControl}>
                 <TouchableOpacity
-                  key={qty}
+                  style={styles.quantityControlButton}
+                  onPress={() => setModifyQuantity(Math.max(1, modifyQuantity - 1))}
+                >
+                  <Text style={styles.quantityControlButtonText}>−</Text>
+                </TouchableOpacity>
+                <View style={styles.quantityDisplay}>
+                  <Text style={styles.quantityDisplayText}>{modifyQuantity}</Text>
+                  <Text style={styles.quantityDisplayUnit}>{modifyUnit}</Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.quantityControlButton}
+                  onPress={() => setModifyQuantity(Math.min(10, modifyQuantity + 1))}
+                >
+                  <Text style={styles.quantityControlButtonText}>+</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Frequency Section */}
+              <Text style={styles.modalLabel}>Delivery Frequency</Text>
+              <View style={styles.frequencyOptions}>
+                {[
+                  { value: 'daily', label: '📅 Daily', desc: 'Every day' },
+                  { value: 'alternate', label: '🔄 Alternate', desc: 'Every other day' },
+                  { value: 'custom', label: '📆 Custom', desc: 'Select days' },
+                ].map((option) => (
+                  <TouchableOpacity
+                    key={option.value}
+                    style={[
+                      styles.frequencyOption,
+                      modifyFrequency === option.value && styles.frequencyOptionActive,
+                    ]}
+                    onPress={() => setModifyFrequency(option.value as typeof modifyFrequency)}
+                  >
+                    <Text style={[
+                      styles.frequencyOptionLabel,
+                      modifyFrequency === option.value && styles.frequencyOptionLabelActive,
+                    ]}>
+                      {option.label}
+                    </Text>
+                    <Text style={styles.frequencyOptionDesc}>{option.desc}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* Custom Days Selector */}
+              {modifyFrequency === 'custom' && (
+                <View style={styles.customDaysContainer}>
+                  <Text style={styles.modalSubLabel}>Select delivery days:</Text>
+                  <View style={styles.daySelector}>
+                    {WEEK_DAYS.map((day) => (
+                      <TouchableOpacity
+                        key={day.id}
+                        style={[
+                          styles.dayButton,
+                          modifyCustomDays.includes(day.id) && styles.dayButtonActive,
+                        ]}
+                        onPress={() => {
+                          setModifyCustomDays((prev) =>
+                            prev.includes(day.id)
+                              ? prev.filter((d) => d !== day.id)
+                              : [...prev, day.id].sort()
+                          );
+                        }}
+                      >
+                        <Text
+                          style={[
+                            styles.dayButtonText,
+                            modifyCustomDays.includes(day.id) && styles.dayButtonTextActive,
+                          ]}
+                        >
+                          {day.short}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              )}
+
+              {/* Delivery Time Section */}
+              <Text style={styles.modalLabel}>Delivery Time</Text>
+              <View style={styles.timeButtons}>
+                <TouchableOpacity
                   style={[
-                    styles.quantityButton,
-                    modifyQuantity === qty && styles.quantityButtonActive,
+                    styles.timeButton,
+                    modifyTime === 'morning' && styles.timeButtonActive,
                   ]}
-                  onPress={() => setModifyQuantity(qty)}
+                  onPress={() => setModifyTime('morning')}
                 >
                   <Text
                     style={[
-                      styles.quantityButtonText,
-                      modifyQuantity === qty && styles.quantityButtonTextActive,
+                      styles.timeButtonText,
+                      modifyTime === 'morning' && styles.timeButtonTextActive,
                     ]}
                   >
-                    {qty}
+                    🌅 Morning
                   </Text>
                 </TouchableOpacity>
-              ))}
-            </View>
+                <TouchableOpacity
+                  style={[
+                    styles.timeButton,
+                    modifyTime === 'evening' && styles.timeButtonActive,
+                  ]}
+                  onPress={() => setModifyTime('evening')}
+                >
+                  <Text
+                    style={[
+                      styles.timeButtonText,
+                      modifyTime === 'evening' && styles.timeButtonTextActive,
+                    ]}
+                  >
+                    🌆 Evening
+                  </Text>
+                </TouchableOpacity>
+              </View>
 
-            <Text style={styles.modalLabel}>Delivery Time</Text>
-            <View style={styles.timeButtons}>
-              <TouchableOpacity
-                style={[
-                  styles.timeButton,
-                  modifyTime === 'morning' && styles.timeButtonActive,
-                ]}
-                onPress={() => setModifyTime('morning')}
-              >
-                <Text
-                  style={[
-                    styles.timeButtonText,
-                    modifyTime === 'morning' && styles.timeButtonTextActive,
-                  ]}
-                >
-                  🌅 Morning
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.timeButton,
-                  modifyTime === 'evening' && styles.timeButtonActive,
-                ]}
-                onPress={() => setModifyTime('evening')}
-              >
-                <Text
-                  style={[
-                    styles.timeButtonText,
-                    modifyTime === 'evening' && styles.timeButtonTextActive,
-                  ]}
-                >
-                  🌆 Evening
-                </Text>
+              <TouchableOpacity style={styles.modalApplyButton} onPress={applyModification}>
+                <Text style={styles.modalApplyButtonText}>Save Changes</Text>
               </TouchableOpacity>
             </View>
-
-            <TouchableOpacity style={styles.modalApplyButton} onPress={applyModification}>
-              <Text style={styles.modalApplyButtonText}>Apply Changes</Text>
-            </TouchableOpacity>
-          </View>
+          </ScrollView>
         </View>
       </Modal>
 
@@ -1150,9 +1241,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: theme.colors.text,
   },
-  customDaysContainer: {
-    marginBottom: 12,
-  },
   customDaysLabel: {
     fontSize: 13,
     fontWeight: '600',
@@ -1263,11 +1351,119 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-end',
   },
+  modalScrollView: {
+    maxHeight: '90%',
+  },
+  modalScrollContent: {
+    flexGrow: 1,
+    justifyContent: 'flex-end',
+  },
   modalContent: {
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 24,
+  },
+  // Modify Modal specific styles
+  modifyProductInfo: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+    alignItems: 'center',
+  },
+  modifyProductName: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: theme.colors.text,
+  },
+  modifyProductBrand: {
+    fontSize: 14,
+    color: theme.colors.textSecondary,
+    marginTop: 4,
+  },
+  quantityControl: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+    gap: 16,
+  },
+  quantityControlButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: theme.colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: theme.colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  quantityControlButtonText: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  quantityDisplay: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    minWidth: 100,
+    justifyContent: 'center',
+  },
+  quantityDisplayText: {
+    fontSize: 48,
+    fontWeight: '700',
+    color: theme.colors.text,
+  },
+  quantityDisplayUnit: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: theme.colors.textSecondary,
+    marginLeft: 4,
+  },
+  frequencyOptions: {
+    gap: 12,
+    marginBottom: 20,
+  },
+  frequencyOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: theme.colors.borderLight,
+    backgroundColor: '#FFFFFF',
+  },
+  frequencyOptionActive: {
+    borderColor: theme.colors.primary,
+    backgroundColor: theme.colors.primary + '08',
+  },
+  frequencyOptionLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: theme.colors.text,
+  },
+  frequencyOptionLabelActive: {
+    color: theme.colors.primary,
+  },
+  frequencyOptionDesc: {
+    fontSize: 13,
+    color: theme.colors.textSecondary,
+  },
+  customDaysContainer: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+  },
+  modalSubLabel: {
+    fontSize: 14,
+    color: theme.colors.textSecondary,
+    marginBottom: 12,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -1491,22 +1687,33 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: theme.colors.primary,
   },
-  // Frequency Modal Styles
-  frequencyOptions: {
-    gap: 12,
-    marginBottom: 20,
+  // Day selection styles for custom frequency
+  daySelector: {
+    flexDirection: 'row',
+    gap: 8,
   },
-  frequencyOption: {
+  dayButton: {
+    flex: 1,
     backgroundColor: '#F5F5F5',
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 8,
+    paddingVertical: 12,
+    alignItems: 'center',
     borderWidth: 2,
     borderColor: 'transparent',
   },
-  frequencyOptionActive: {
+  dayButtonActive: {
     backgroundColor: '#E8F5E9',
     borderColor: theme.colors.primary,
   },
+  dayButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: theme.colors.text,
+  },
+  dayButtonTextActive: {
+    color: theme.colors.primary,
+  },
+  // Frequency Modal Styles (for existing frequency modal)
   frequencyOptionText: {
     fontSize: 16,
     fontWeight: '600',

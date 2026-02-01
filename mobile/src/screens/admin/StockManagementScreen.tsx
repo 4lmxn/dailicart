@@ -59,10 +59,11 @@ export const StockManagementScreen: React.FC<AdminScreenProps<'StockManagement'>
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'collections' | 'inventory'>('collections');
+  const [activeTab, setActiveTab] = useState<'collections' | 'inventory' | 'movements'>('collections');
   
   const [collections, setCollections] = useState<StockCollection[]>([]);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [movements, setMovements] = useState<any[]>([]);
   const [selectedDate, setSelectedDate] = useState(getLocalDateString());
   
   const [showDetailModal, setShowDetailModal] = useState(false);
@@ -84,6 +85,7 @@ export const StockManagementScreen: React.FC<AdminScreenProps<'StockManagement'>
       await Promise.all([
         loadCollections(),
         loadInventory(),
+        loadMovements(),
       ]);
     } catch (err: any) {
       console.error('Error loading data:', err);
@@ -92,6 +94,19 @@ export const StockManagementScreen: React.FC<AdminScreenProps<'StockManagement'>
       setLoading(false);
       setRefreshing(false);
     }
+  };
+
+  const loadMovements = async () => {
+    const { data, error } = await supabase
+      .from('stock_movements')
+      .select('id, created_at, movement_type, quantity, reference_type, notes, products:product_id(name, unit), created_by_user:created_by(name)')
+      .order('created_at', { ascending: false })
+      .limit(100);
+    if (error) {
+      console.error('Error loading movements:', error);
+      return;
+    }
+    setMovements(data || []);
   };
 
   const loadCollections = async () => {
@@ -425,6 +440,48 @@ export const StockManagementScreen: React.FC<AdminScreenProps<'StockManagement'>
     </View>
   );
 
+  const renderMovementsTab = () => (
+    <View>
+      <Text style={styles.sectionTitle}>Recent Stock Movements</Text>
+      
+      {movements.length === 0 ? (
+        <EmptyState
+          icon="🔄"
+          title="No Movements"
+          description="Receipts, issues, and returns will show here."
+        />
+      ) : (
+        movements.map((m) => (
+          <View key={m.id} style={styles.movementCard}>
+            <View style={styles.movementHeader}>
+              <Text style={styles.productName}>{m.products?.name || 'Unknown'}</Text>
+              <View style={[
+                styles.movementTypeBadge,
+                { backgroundColor: m.movement_type === 'receipt' ? '#E8F5E9' : m.movement_type === 'issue' ? '#FFF3E0' : '#FFEBEE' }
+              ]}>
+                <Text style={[
+                  styles.movementTypeText,
+                  { color: m.movement_type === 'receipt' ? '#4CAF50' : m.movement_type === 'issue' ? '#FF9800' : '#F44336' }
+                ]}>
+                  {m.movement_type?.toUpperCase()}
+                </Text>
+              </View>
+            </View>
+            <Text style={styles.movementQuantity}>
+              {m.movement_type === 'receipt' ? '+' : '-'}{formatQuantity(m.quantity, m.products?.unit)}
+            </Text>
+            {m.notes && <Text style={styles.movementNotes}>{m.notes}</Text>}
+            <Text style={styles.movementDate}>
+              {new Date(m.created_at).toLocaleDateString('en-IN', {
+                day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+              })}
+            </Text>
+          </View>
+        ))
+      )}
+    </View>
+  );
+
   if (loading && !refreshing) {
     return (
       <AppLayout>
@@ -458,6 +515,14 @@ export const StockManagementScreen: React.FC<AdminScreenProps<'StockManagement'>
             📦 Inventory
           </Text>
         </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'movements' && styles.tabActive]}
+          onPress={() => setActiveTab('movements')}
+        >
+          <Text style={[styles.tabText, activeTab === 'movements' && styles.tabTextActive]}>
+            🔄 Movements
+          </Text>
+        </TouchableOpacity>
       </View>
 
       {error && (
@@ -470,7 +535,9 @@ export const StockManagementScreen: React.FC<AdminScreenProps<'StockManagement'>
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
         }
       >
-        {activeTab === 'collections' ? renderCollectionsTab() : renderInventoryTab()}
+        {activeTab === 'collections' && renderCollectionsTab()}
+        {activeTab === 'inventory' && renderInventoryTab()}
+        {activeTab === 'movements' && renderMovementsTab()}
         <View style={{ height: 40 }} />
       </ScrollView>
 
@@ -952,6 +1019,48 @@ const styles = StyleSheet.create({
     color: '#64748B',
     marginLeft: 6,
     fontWeight: '500',
+  },
+  // Movements tab styles
+  movementCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 3,
+  },
+  movementHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  movementTypeBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  movementTypeText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  movementQuantity: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1E293B',
+    marginBottom: 4,
+  },
+  movementNotes: {
+    fontSize: 13,
+    color: '#64748B',
+    marginBottom: 4,
+  },
+  movementDate: {
+    fontSize: 12,
+    color: '#94A3B8',
   },
 });
 

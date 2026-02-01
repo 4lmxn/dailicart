@@ -15,20 +15,11 @@ import { AppLayout } from '../../components/AppLayout';
 import { AppBar } from '../../components/AppBar';
 import type { AdminScreenProps } from '../../navigation/types';
 import { formatCurrency, formatQuantity } from '../../utils/helpers';
+import { WEEK_DAYS } from '../../constants';
 import { SubscriptionService } from '../../services/api/subscriptions';
 import type { Subscription } from '../../services/api/types';
 
 interface SubscriptionDetailScreenProps {}
-
-const WEEK_DAYS = [
-  { id: 0, short: 'S', full: 'Sunday' },
-  { id: 1, short: 'M', full: 'Monday' },
-  { id: 2, short: 'T', full: 'Tuesday' },
-  { id: 3, short: 'W', full: 'Wednesday' },
-  { id: 4, short: 'T', full: 'Thursday' },
-  { id: 5, short: 'F', full: 'Friday' },
-  { id: 6, short: 'S', full: 'Saturday' },
-];
 
 export const SubscriptionDetailScreen: React.FC<AdminScreenProps<'SubscriptionDetail'>> = ({ route, navigation }) => {
   const { subscriptionId } = route.params;

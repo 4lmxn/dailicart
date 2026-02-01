@@ -52,10 +52,9 @@ const linking = {
           PayoutManagement: 'admin/payouts',
           OrderAssignment: 'admin/assignments/orders',
           CreateManualOrder: 'admin/orders/create',
-          SupplierManagement: 'admin/suppliers',
-          PurchaseOrders: 'admin/purchase-orders',
-          SupplierPayments: 'admin/supplier-payments',
-          InventoryMovements: 'admin/inventory',
+          StockManagement: 'admin/stock',
+          AdminSupport: 'admin/support',
+          PendingAddressChanges: 'admin/address-changes',
         },
       },
       Distributor: {

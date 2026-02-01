@@ -14,7 +14,8 @@ import {
 import { AppLayout } from '../../components/AppLayout';
 import { AppBar } from '../../components/AppBar';
 import { theme } from '../../theme';
-import { formatCurrency, cdn, getLocalDateString } from '../../utils/helpers';
+import { formatCurrency, cdn, getLocalDateString, getProductEmoji } from '../../utils/helpers';
+import { WEEK_DAYS_PICKER } from '../../constants';
 import { SubscriptionService } from '../../services/api/subscriptions';
 import { useAuthStore } from '../../store/authStore';
 import { supabase } from '../../services/supabase';
@@ -23,6 +24,7 @@ import { getDefaultAddress } from '../../services/address';
 interface CreateSubscriptionScreenProps {
   product: any;
   onBack: () => void;
+  onNavigateToWallet: () => void;
   onComplete: () => void;
 }
 
@@ -40,60 +42,13 @@ const FREQUENCIES = [
   { id: 'custom', label: 'Custom Days', description: 'Choose specific days', icon: '✨' },
 ];
 
-const WEEK_DAYS = [
-  { id: 1, short: 'M', full: 'Monday' },
-  { id: 2, short: 'T', full: 'Tuesday' },
-  { id: 3, short: 'W', full: 'Wednesday' },
-  { id: 4, short: 'T', full: 'Thursday' },
-  { id: 5, short: 'F', full: 'Friday' },
-  { id: 6, short: 'S', full: 'Saturday' },
-  { id: 0, short: 'S', full: 'Sunday' },
-];
-
-// Get product-appropriate emoji based on category and name
-const getProductEmoji = (category: string, name: string) => {
-  const c = category?.toLowerCase() || '';
-  const n = name?.toLowerCase() || '';
-  
-  // Milk products
-  if (c === 'milk' || n.includes('milk')) return '🥛';
-  
-  // Dairy products
-  if (n.includes('curd') || n.includes('yogurt') || n.includes('dahi')) return '🥄';
-  if (n.includes('paneer') || n.includes('cheese')) return '🧀';
-  if (n.includes('butter')) return '🧈';
-  if (n.includes('ghee')) return '🫙';
-  
-  // Eggs
-  if (c === 'eggs' || n.includes('egg')) return '🥚';
-  
-  // Bread & Bakery
-  if (c === 'bakery' || n.includes('bread') || n.includes('pav')) return '🍞';
-  if (n.includes('croissant') || n.includes('bun')) return '🥐';
-  
-  // Ready to cook
-  if (n.includes('batter') || n.includes('dosa') || n.includes('idli')) return '🍛';
-  if (n.includes('dough') || n.includes('chapati') || n.includes('roti')) return '🫓';
-  
-  // Beverages
-  if (c === 'beverages' || n.includes('buttermilk') || n.includes('lassi')) return '🥤';
-  if (n.includes('coffee')) return '☕';
-  if (n.includes('juice')) return '🧃';
-  
-  // Essentials
-  if (n.includes('newspaper')) return '📰';
-  if (n.includes('flower')) return '💐';
-  
-  // Default
-  return '📦';
-};
-
 // Simple quantity options - just 1 to 5 units
 const QUANTITY_OPTIONS = [1, 2, 3, 4, 5];
 
 export const CreateSubscriptionScreen: React.FC<CreateSubscriptionScreenProps> = ({
   product,
   onBack,
+  onNavigateToWallet,
   onComplete,
 }) => {
   const [step, setStep] = useState(1);
@@ -222,15 +177,26 @@ export const CreateSubscriptionScreen: React.FC<CreateSubscriptionScreenProps> =
     try {
       setCreating(true);
       
-      // Fetch customer wallet balance
+      // Fetch customer wallet balance - use maybeSingle to handle new users
       const { data: customerRow, error: custErr } = await supabase
         .from('customers')
         .select('id, wallet_balance')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
-      if (custErr || !customerRow) {
+      if (custErr) {
         Alert.alert('Error', 'Unable to fetch customer profile. Please try again.');
+        setCreating(false);
+        return;
+      }
+
+      // Handle new users without customer record
+      if (!customerRow) {
+        Alert.alert(
+          'Profile Not Found',
+          'Your customer profile is being set up. Please try again in a moment.',
+          [{ text: 'OK' }]
+        );
         setCreating(false);
         return;
       }
@@ -263,9 +229,8 @@ export const CreateSubscriptionScreen: React.FC<CreateSubscriptionScreenProps> =
             { 
               text: '💳 Recharge Now', 
               onPress: () => {
-                // Navigate to wallet screen
-                onBack(); // Go back first
-                // User will manually navigate to wallet
+                // Navigate directly to wallet screen
+                onNavigateToWallet();
               }
             }
           ]
@@ -656,7 +621,7 @@ export const CreateSubscriptionScreen: React.FC<CreateSubscriptionScreenProps> =
         <View style={styles.customDaysSection}>
           <Text style={styles.customDaysTitle}>Select Delivery Days</Text>
           <View style={styles.daysGrid}>
-            {WEEK_DAYS.map((day) => (
+            {WEEK_DAYS_PICKER.map((day) => (
               <TouchableOpacity
                 key={day.id}
                 style={[
@@ -679,7 +644,7 @@ export const CreateSubscriptionScreen: React.FC<CreateSubscriptionScreenProps> =
           {customDays.length > 0 && (
             <Text style={styles.selectedDaysText}>
               Delivering on:{' '}
-              {customDays.map(id => WEEK_DAYS.find(d => d.id === id)?.full).join(', ')}
+              {customDays.map(id => WEEK_DAYS_PICKER.find(d => d.id === id)?.full).join(', ')}
             </Text>
           )}
         </View>

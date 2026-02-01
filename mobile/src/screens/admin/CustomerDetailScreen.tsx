@@ -52,19 +52,22 @@ export const CustomerDetailScreen: React.FC<AdminScreenProps<'CustomerDetail'>> 
   const loadCustomerData = async () => {
     try {
       setLoading(true);
-      if (!customerId) {
-        Alert.alert('Missing ID', 'No customer ID provided');
-        setLoading(false);
+      
+      // Validate route parameter
+      if (!customerId || typeof customerId !== 'string') {
+        Alert.alert('Error', 'Invalid customer ID. Please go back and try again.');
+        navigation.goBack();
         return;
       }
+      
       const [customerData, subsData, txnData] = await Promise.all([
-        CustomerAdminService.getCustomerById(customerId!),
-        SubscriptionService.getCustomerSubscriptions(customerId!),
-        WalletService.getTransactions(customerId!, 20),
+        CustomerAdminService.getCustomerById(customerId),
+        SubscriptionService.getCustomerSubscriptions(customerId),
+        WalletService.getTransactions(customerId, 20),
       ]);
 
       // Always fetch wallet via WalletService to ensure accuracy
-      const walletBalance = await WalletService.getBalance(customerId!);
+      const walletBalance = await WalletService.getBalance(customerId);
 
       if (customerData) {
         setCustomer({ ...customerData, wallet: walletBalance });

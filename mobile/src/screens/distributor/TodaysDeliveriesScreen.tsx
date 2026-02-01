@@ -26,6 +26,8 @@ import { SkeletonList } from '../../components/Skeleton';
 import { EmptyState } from '../../components/EmptyState';
 import { ErrorBanner } from '../../components/ErrorBanner';
 import { useToast } from '../../components/Toast';
+import { useOffline } from '../../hooks/useOffline';
+import { CachedDelivery } from '../../services/offline/offlineService';
 
 // Enable LayoutAnimation on Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -76,6 +78,7 @@ export function TodaysDeliveriesScreen() {
   const { user } = useAuthStore();
   const navigation = useNavigation();
   const toast = useToast();
+  const { isOnline, pendingCount, queueUpdate, cacheDeliveries, getCachedDeliveries, syncPending } = useOffline();
   const [buildings, setBuildings] = useState<BuildingGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -84,15 +87,142 @@ export function TodaysDeliveriesScreen() {
   const [selectedDelivery, setSelectedDelivery] = useState<DeliveryItem | null>(null);
   const [processing, setProcessing] = useState(false);
   const [showStockSummary, setShowStockSummary] = useState(true);
+  const [distributorId, setDistributorId] = useState<string | null>(null);
+  const [usingCachedData, setUsingCachedData] = useState(false);
 
   useEffect(() => {
     fetchTodaysDeliveries();
   }, []);
 
+  // Sync pending updates when coming online
+  useEffect(() => {
+    if (isOnline && pendingCount > 0) {
+      syncPending().then(({ synced, failed }) => {
+        if (synced > 0) {
+          toast.show(`Synced ${synced} delivery update${synced > 1 ? 's' : ''}`, { type: 'success' });
+          fetchTodaysDeliveries(); // Refresh to get latest data
+        }
+        if (failed > 0) {
+          toast.show(`${failed} update${failed > 1 ? 's' : ''} failed to sync`, { type: 'error' });
+        }
+      });
+    }
+  }, [isOnline]);
+
+  // Helper to convert deliveries to cached format
+  const deliveriesToCachedFormat = (buildings: BuildingGroup[]): CachedDelivery[] => {
+    const result: CachedDelivery[] = [];
+    buildings.forEach(building => {
+      building.floors.forEach(floor => {
+        floor.deliveries.forEach(delivery => {
+          result.push({
+            ...delivery,
+            buildingId: building.buildingId,
+            buildingName: building.buildingName,
+            societyId: building.societyId,
+            societyName: building.societyName,
+          });
+        });
+      });
+    });
+    return result;
+  };
+
+  // Helper to convert cached deliveries back to building groups
+  const cachedToBuildings = (cached: CachedDelivery[]): BuildingGroup[] => {
+    const buildingMap = new Map<string, BuildingGroup>();
+
+    cached.forEach(delivery => {
+      if (!buildingMap.has(delivery.buildingId)) {
+        buildingMap.set(delivery.buildingId, {
+          buildingId: delivery.buildingId,
+          buildingName: delivery.buildingName,
+          societyId: delivery.societyId,
+          societyName: delivery.societyName,
+          floors: [],
+          totalDeliveries: 0,
+          pendingCount: 0,
+          deliveredCount: 0,
+          stockSummary: new Map(),
+        });
+      }
+
+      const building = buildingMap.get(delivery.buildingId)!;
+      building.totalDeliveries++;
+
+      if (delivery.status === 'delivered') {
+        building.deliveredCount++;
+      } else {
+        building.pendingCount++;
+        // Add to stock summary
+        const productKey = delivery.productName;
+        const existing = building.stockSummary.get(productKey);
+        if (existing) {
+          existing.quantity += delivery.quantity;
+        } else {
+          building.stockSummary.set(productKey, {
+            name: delivery.productName,
+            quantity: delivery.quantity,
+            unit: delivery.unit,
+          });
+        }
+      }
+
+      let floorGroup = building.floors.find(f => f.floor === delivery.floor);
+      if (!floorGroup) {
+        floorGroup = { floor: delivery.floor, deliveries: [] };
+        building.floors.push(floorGroup);
+      }
+      floorGroup.deliveries.push(delivery);
+    });
+
+    // Sort buildings and floors
+    const sortedBuildings = Array.from(buildingMap.values())
+      .sort((a, b) => {
+        const societyCompare = a.societyName.localeCompare(b.societyName);
+        if (societyCompare !== 0) return societyCompare;
+        return a.buildingName.localeCompare(b.buildingName);
+      });
+
+    sortedBuildings.forEach(building => {
+      building.floors.sort((a, b) => a.floor - b.floor);
+      building.floors.forEach(floor => {
+        floor.deliveries.sort((a, b) => a.unitNumber.localeCompare(b.unitNumber));
+      });
+    });
+
+    return sortedBuildings;
+  };
+
   const fetchTodaysDeliveries = async () => {
+    const today = getLocalDateString();
+
+    // If offline, try to use cached data
+    if (!isOnline) {
+      try {
+        const cached = await getCachedDeliveries(today);
+        if (cached && cached.length > 0) {
+          const buildingGroups = cachedToBuildings(cached);
+          setBuildings(buildingGroups);
+          setUsingCachedData(true);
+          setLoading(false);
+          setRefreshing(false);
+          toast.show('Using offline data', { type: 'info' });
+          return;
+        }
+      } catch (err) {
+        console.error('Error loading cached data:', err);
+      }
+      setError('No internet connection. Please connect to load deliveries.');
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
+      setUsingCachedData(false);
 
       const userId = await getAuthUserId();
       if (!userId) {
@@ -100,17 +230,25 @@ export function TodaysDeliveriesScreen() {
         return;
       }
 
-      // Get distributor ID
-      const { data: distributor } = await supabase
+      // Get distributor ID - use maybeSingle to handle edge case
+      const { data: distributor, error: distError } = await supabase
         .from('distributors')
         .select('id')
         .eq('user_id', userId)
-        .single();
+        .maybeSingle();
 
-      if (!distributor?.id) {
-        setError('Distributor not found');
+      if (distError) {
+        console.error('Error fetching distributor:', distError);
+        setError('Failed to load distributor profile');
         return;
       }
+
+      if (!distributor?.id) {
+        setError('Distributor profile not found. Please contact admin.');
+        return;
+      }
+
+      const distId = distributor.id;
 
       const today = getLocalDateString();
 
@@ -118,7 +256,7 @@ export function TodaysDeliveriesScreen() {
       const { data: activeAssignments } = await supabase
         .from('distributor_building_assignments')
         .select('tower_id')
-        .eq('distributor_id', distributor.id)
+        .eq('distributor_id', distId)
         .eq('is_active', true);
 
       const activeTowerIds = (activeAssignments || []).map(a => a.tower_id);
@@ -162,7 +300,7 @@ export function TodaysDeliveriesScreen() {
             phone
           )
         `)
-        .eq('assigned_distributor_id', distributor.id)
+        .eq('assigned_distributor_id', distId)
         .eq('delivery_date', today)
         .in('status', ['scheduled', 'pending', 'assigned', 'in_transit', 'delivered']);
 
@@ -269,14 +407,30 @@ export function TodaysDeliveriesScreen() {
 
       setBuildings(sortedBuildings);
 
+      // Cache deliveries for offline use
+      if (distId) {
+        setDistributorId(distId);
+        const deliveriesToCache = deliveriesToCachedFormat(sortedBuildings);
+        cacheDeliveries(deliveriesToCache, today, distId);
+      }
+
       // Auto-expand first building if only one
       if (sortedBuildings.length === 1) {
         setExpandedBuildings(new Set([sortedBuildings[0].buildingId]));
       }
     } catch (error: any) {
       console.error('Error fetching deliveries:', error);
-      setError(error.message || 'Failed to load deliveries');
-      toast.show('Failed to load deliveries', { type: 'error' });
+      // Try to load cached data on error
+      const cached = await getCachedDeliveries(today);
+      if (cached && cached.length > 0) {
+        const buildingGroups = cachedToBuildings(cached);
+        setBuildings(buildingGroups);
+        setUsingCachedData(true);
+        toast.show('Loaded cached data', { type: 'info' });
+      } else {
+        setError(error.message || 'Failed to load deliveries');
+        toast.show('Failed to load deliveries', { type: 'error' });
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -328,6 +482,22 @@ export function TodaysDeliveriesScreen() {
   };
 
   const handleMarkDelivered = (delivery: DeliveryItem) => {
+    if (!isOnline) {
+      // Offline mode - warn that payment will be processed later
+      Alert.alert(
+        '📴 Offline Mode',
+        `You are offline. The delivery will be queued and payment will be processed when you're back online.\n\nMark ${delivery.customerName}'s order as delivered?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { 
+            text: 'Queue Delivery', 
+            onPress: () => processDeliveryOffline(delivery) 
+          }
+        ]
+      );
+      return;
+    }
+
     Alert.alert(
       'Confirm Delivery',
       `Mark delivery as completed for ${delivery.customerName}?\n\n${formatQuantity(delivery.quantity, delivery.unit)} ${delivery.productName}\nAmount: ${formatCurrency(delivery.amount)}`,
@@ -336,6 +506,49 @@ export function TodaysDeliveriesScreen() {
         { text: 'Confirm', onPress: () => processDelivery(delivery) }
       ]
     );
+  };
+
+  // Process delivery when offline - queue for later sync
+  const processDeliveryOffline = async (delivery: DeliveryItem) => {
+    try {
+      setProcessing(true);
+      setSelectedDelivery(delivery);
+
+      // Queue the update for later sync
+      await queueUpdate(delivery.orderId, 'delivered');
+
+      // Update local state optimistically
+      setBuildings(prev => {
+        const updated = prev.map(building => ({
+          ...building,
+          deliveredCount: building.floors.reduce((count, floor) => {
+            return count + floor.deliveries.filter(d => 
+              d.orderId === delivery.orderId || d.status === 'delivered'
+            ).length;
+          }, 0),
+          pendingCount: building.floors.reduce((count, floor) => {
+            return count + floor.deliveries.filter(d => 
+              d.orderId !== delivery.orderId && d.status !== 'delivered'
+            ).length;
+          }, 0),
+          floors: building.floors.map(floor => ({
+            ...floor,
+            deliveries: floor.deliveries.map(d => 
+              d.orderId === delivery.orderId ? { ...d, status: 'delivered' } : d
+            ),
+          })),
+        }));
+        return updated;
+      });
+
+      toast.show(`Queued delivery for ${delivery.unitNumber}`, { type: 'info' });
+      setSelectedDelivery(null);
+    } catch (error: any) {
+      console.error('Error queuing delivery:', error);
+      Alert.alert('Error', error.message || 'Failed to queue delivery');
+    } finally {
+      setProcessing(false);
+    }
   };
 
   const processDelivery = async (delivery: DeliveryItem) => {
@@ -348,10 +561,15 @@ export function TodaysDeliveriesScreen() {
         .from('orders')
         .select('status')
         .eq('id', delivery.orderId)
-        .single();
+        .maybeSingle();
 
       if (orderCheckError) throw orderCheckError;
-      if (orderCheck?.status === 'delivered') {
+      if (!orderCheck) {
+        Alert.alert('Order Not Found', 'This order no longer exists.');
+        setProcessing(false);
+        return;
+      }
+      if (orderCheck.status === 'delivered') {
         Alert.alert('Already Delivered', 'This order has already been marked as delivered.');
         setProcessing(false);
         return;
@@ -362,11 +580,17 @@ export function TodaysDeliveriesScreen() {
         .from('customers')
         .select('id, wallet_balance, user_id')
         .eq('user_id', delivery.customerId)
-        .single();
+        .maybeSingle();
 
       if (customerError) throw customerError;
 
-      if (!customer || customer.wallet_balance < delivery.amount) {
+      if (!customer) {
+        Alert.alert('Customer Not Found', 'Customer record not found for this delivery.');
+        setProcessing(false);
+        return;
+      }
+
+      if (customer.wallet_balance < delivery.amount) {
         Alert.alert(
           '⚠️ Insufficient Balance',
           `Customer has insufficient balance for this delivery.\n\nRequired: ${formatCurrency(delivery.amount)}\n\nPlease ask customer to recharge.`
@@ -409,7 +633,7 @@ export function TodaysDeliveriesScreen() {
         .from('customers')
         .select('wallet_balance')
         .eq('user_id', delivery.customerId)
-        .single();
+        .maybeSingle();
 
       const newBalance = updatedCustomer?.wallet_balance || 0;
 
@@ -605,6 +829,38 @@ export function TodaysDeliveriesScreen() {
         variant="surface"
       />
 
+      {/* Offline Banner */}
+      {(!isOnline || usingCachedData || pendingCount > 0) && (
+        <View style={[
+          styles.offlineBanner, 
+          !isOnline ? styles.offlineBannerOffline : styles.offlineBannerPending
+        ]}>
+          <Text style={styles.offlineBannerIcon}>
+            {!isOnline ? '📴' : pendingCount > 0 ? '🔄' : '📦'}
+          </Text>
+          <View style={styles.offlineBannerTextContainer}>
+            <Text style={styles.offlineBannerTitle}>
+              {!isOnline ? 'Offline Mode' : pendingCount > 0 ? 'Pending Sync' : 'Cached Data'}
+            </Text>
+            <Text style={styles.offlineBannerSubtitle}>
+              {!isOnline 
+                ? 'Deliveries will sync when online' 
+                : pendingCount > 0 
+                  ? `${pendingCount} delivery update${pendingCount > 1 ? 's' : ''} pending`
+                  : 'Showing cached deliveries'}
+            </Text>
+          </View>
+          {isOnline && pendingCount > 0 && (
+            <TouchableOpacity 
+              style={styles.offlineSyncButton}
+              onPress={() => syncPending()}
+            >
+              <Text style={styles.offlineSyncButtonText}>Sync</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
+
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.scrollContent}
@@ -753,6 +1009,48 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 16,
+  },
+
+  // Offline Banner
+  offlineBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 12,
+  },
+  offlineBannerOffline: {
+    backgroundColor: '#FEE2E2',
+  },
+  offlineBannerPending: {
+    backgroundColor: '#FEF3C7',
+  },
+  offlineBannerIcon: {
+    fontSize: 20,
+  },
+  offlineBannerTextContainer: {
+    flex: 1,
+  },
+  offlineBannerTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1F2937',
+  },
+  offlineBannerSubtitle: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  offlineSyncButton: {
+    backgroundColor: '#3B82F6',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  offlineSyncButtonText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '600',
   },
 
   // Progress Card
