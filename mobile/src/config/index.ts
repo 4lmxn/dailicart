@@ -1,14 +1,16 @@
 // App Configuration
 export const config = {
-  // API Configuration
+  // API Configuration - Uses Supabase Edge Functions
   api: {
-    baseURL: __DEV__ 
-      ? 'http://localhost:3000/api' 
-      : 'https://api.dailicart.in/api',
+    // Base URL for Edge Functions (derived from Supabase URL)
+    get baseURL() {
+      const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
+      return supabaseUrl ? `${supabaseUrl}/functions/v1` : '';
+    },
     timeout: 30000,
   },
 
-  // Supabase Configuration (You'll add these after creating Supabase project)
+  // Supabase Configuration
   supabase: {
     url: process.env.EXPO_PUBLIC_SUPABASE_URL || '',
     anonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '',
@@ -22,9 +24,8 @@ export const config = {
       process.env.RAZORPAY_KEY_ID ||
       '',
     // NEVER bundle secrets in mobile app; secret must live server-side.
-    // Kept for backward compatibility but should not be used on device.
     keySecret: '',
-    mode: (process.env.EXPO_PUBLIC_PAYMENT_MODE || 'dev').toLowerCase(), // 'dev' | 'prod'
+    mode: (process.env.EXPO_PUBLIC_PAYMENT_MODE || 'prod').toLowerCase(), // 'dev' | 'prod' - default to prod for production safety
   },
 
   // App Configuration

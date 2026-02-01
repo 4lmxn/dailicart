@@ -127,7 +127,7 @@ CREATE TYPE payout_status AS ENUM ('pending','approved','paid');
 -- Support Tickets
 CREATE TYPE ticket_status AS ENUM ('open','in_progress','waiting_customer','resolved','closed','escalated');
 CREATE TYPE ticket_priority AS ENUM ('low','medium','high','urgent');
-CREATE TYPE ticket_category AS ENUM ('delivery_issue','product_quality','payment','refund','subscription','other');
+CREATE TYPE ticket_category AS ENUM ('delivery_issue','product_quality','payment','refund','subscription','address_change','other');
 
 -- Photo proof types
 CREATE TYPE proof_type AS ENUM ('stock_received','stock_returned','delivery_issue','product_damage','other');

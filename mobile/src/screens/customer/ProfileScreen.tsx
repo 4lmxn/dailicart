@@ -38,9 +38,10 @@ interface Profile {
 
 interface ProfileScreenProps {
   onBack: () => void;
+  onNavigateToSupport?: (prefill?: { category?: string; subject?: string; description?: string }) => void;
 }
 
-export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack }) => {
+export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack, onNavigateToSupport }) => {
   const { logout, user } = useAuthStore();
   const insets = useSafeAreaInsets();
   
@@ -224,25 +225,60 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack }) => {
 
   const handleDeleteAddress = (addressId: string) => {
     const address = addresses.find((a) => a.id === addressId);
-    if (address?.isDefault) {
-      Alert.alert('Error', 'Cannot delete default address. Set another address as default first.');
+    if (!address) return;
+    
+    if (address.isDefault) {
+      Alert.alert('Cannot Delete', 'This is your default address. Please contact support if you need to change it.');
       return;
     }
-    Alert.alert('Delete Address', 'Are you sure you want to delete this address?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await supabase.from('addresses').delete().eq('id', addressId);
-            setAddresses(prev => prev.filter(a => a.id !== addressId));
-          } catch (e: any) {
-            Alert.alert('Error', e.message || 'Failed to delete address');
-          }
+    
+    // Route to support for address deletion request
+    Alert.alert(
+      'Request Address Deletion',
+      'For your security, address changes require admin approval. Would you like to submit a support request?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Submit Request',
+          onPress: () => {
+            if (onNavigateToSupport) {
+              onNavigateToSupport({
+                category: 'address_change',
+                subject: 'Request to delete an address',
+                description: `Please delete my address:\n\nFlat: ${address.flatNo}\nSociety: ${address.society}\nStreet: ${address.street}\n\nReason: [Please add your reason here]`,
+              });
+            } else {
+              Alert.alert('Info', 'Please go to Support section to submit an address change request.');
+            }
+          },
         },
-      },
-    ]);
+      ]
+    );
+  };
+
+  // Handler for requesting address changes (edit)
+  const handleRequestAddressChange = (address: Address) => {
+    Alert.alert(
+      'Request Address Change',
+      'For your security and to ensure uninterrupted deliveries, address changes require admin approval. Would you like to submit a support request?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Submit Request',
+          onPress: () => {
+            if (onNavigateToSupport) {
+              onNavigateToSupport({
+                category: 'address_change',
+                subject: 'Request to change my delivery address',
+                description: `Current Address:\nFlat: ${address.flatNo}\nSociety: ${address.society}\nStreet: ${address.street}\n\nNew Address Details:\n[Please provide your new address details here]\n\nReason for change: [Please add your reason]`,
+              });
+            } else {
+              Alert.alert('Info', 'Please go to Support section to submit an address change request.');
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleAddAddress = () => {
@@ -461,11 +497,19 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack }) => {
                   </TouchableOpacity>
                 )}
                 <TouchableOpacity
-                  style={[styles.addressActionButton, styles.deleteButton]}
-                  onPress={() => handleDeleteAddress(address.id)}
+                  style={[styles.addressActionButton, styles.addressEditButton]}
+                  onPress={() => handleRequestAddressChange(address)}
                 >
-                  <Text style={[styles.addressActionText, styles.deleteButtonText]}>Delete</Text>
+                  <Text style={[styles.addressActionText, styles.addressEditButtonText]}>Request Change</Text>
                 </TouchableOpacity>
+                {!address.isDefault && (
+                  <TouchableOpacity
+                    style={[styles.addressActionButton, styles.deleteButton]}
+                    onPress={() => handleDeleteAddress(address.id)}
+                  >
+                    <Text style={[styles.addressActionText, styles.deleteButtonText]}>Delete</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             </View>
           ))}
@@ -824,6 +868,9 @@ const styles = StyleSheet.create({
   deleteButton: {
     backgroundColor: '#FFEBEE',
   },
+  addressEditButton: {
+    backgroundColor: '#E3F2FD',
+  },
   addressActionText: {
     fontSize: 13,
     fontWeight: '600',
@@ -831,6 +878,9 @@ const styles = StyleSheet.create({
   },
   deleteButtonText: {
     color: theme.colors.error,
+  },
+  addressEditButtonText: {
+    color: theme.colors.primary,
   },
   modalOverlay: {
     flex: 1,

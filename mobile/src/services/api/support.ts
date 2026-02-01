@@ -8,9 +8,9 @@ import { checkRateLimit } from '../../utils/rateLimit';
 const ticketSubjectSchema = safeTextSchema.min(5, 'Subject too short').max(100, 'Subject too long');
 const ticketDescriptionSchema = safeTextSchema.min(10, 'Please provide more detail').max(2000, 'Description too long');
 const ticketMessageSchema = safeTextSchema.min(1, 'Message cannot be empty').max(1000, 'Message too long');
-const ticketCategorySchema = z.enum(['delivery_issue', 'product_quality', 'payment', 'refund', 'subscription', 'other']);
+const ticketCategorySchema = z.enum(['delivery_issue', 'product_quality', 'payment', 'refund', 'subscription', 'address_change', 'other']);
 
-export type TicketCategory = 'delivery_issue' | 'product_quality' | 'payment' | 'refund' | 'subscription' | 'other';
+export type TicketCategory = 'delivery_issue' | 'product_quality' | 'payment' | 'refund' | 'subscription' | 'address_change' | 'other';
 export type TicketPriority = 'low' | 'medium' | 'high' | 'urgent';
 export type TicketStatus = 'open' | 'in_progress' | 'waiting_customer' | 'resolved' | 'closed' | 'escalated';
 export type ResolutionType = 'replacement' | 'refund' | 'credit' | 'no_action' | 'other';

@@ -141,12 +141,14 @@ class RazorpayService {
       console.log('✅ Payment successful:', data);
 
       // Verify payment signature (CRITICAL for security)
+      // This also credits the wallet in production mode
       const isValid = await this.verifyPaymentSignature({
         paymentId: data.razorpay_payment_id,
         orderId: (data.razorpay_order_id || orderId || ''),
         signature: data.razorpay_signature || '',
         userId: options.userId,
         idempotencyKey,
+        amount: options.amount, // Pass amount for wallet credit
       });
 
       if (!isValid) {
@@ -203,16 +205,18 @@ class RazorpayService {
     signature: string;
     userId: string;
     idempotencyKey: string;
+    amount: number; // Amount in rupees
   }): Promise<boolean> {
     try {
       if (RAZORPAY_CONFIG.MODE === 'prod') {
-        // Production: call backend to verify signature securely
+        // Production: call Edge Function to verify signature and credit wallet
         const verifyResponse = await supabase.functions.invoke('razorpay_verify', {
           body: {
             razorpay_payment_id: data.paymentId,
             razorpay_order_id: data.orderId,
             razorpay_signature: data.signature,
-            user_id: data.userId,
+            amount: data.amount,
+            idempotency_key: data.idempotencyKey,
           }
         });
         return (verifyResponse.data?.ok === true);
@@ -256,58 +260,33 @@ class RazorpayService {
       const idemKey = idempotencyKey || generateIdempotencyKey(userId, 'wallet');
       
       if (RAZORPAY_CONFIG.MODE === 'prod') {
-        // Production: let backend handle wallet mutation and transaction recording
-        const creditResponse = await paymentAPI.creditWallet({
-          userId,
-          amount,
-          paymentId,
-          orderId,
-          method: 'razorpay',
-          idempotencyKey: idemKey,
-        });
-        return creditResponse.success;
+        // Production: the razorpay_verify Edge Function already credited the wallet
+        // This method is called for backward compatibility but the credit already happened
+        console.log('✅ Wallet already credited by razorpay_verify Edge Function');
+        return true;
       } else {
-        // Development: update balance and record transaction locally for end-to-end tests
-        const { data: profile } = await supabase
-          .from('customers')
-          .select('wallet_balance')
-          .eq('user_id', userId)
-          .maybeSingle();
+        // Development: use the secure RPC function (same as production DB)
+        const { data, error } = await supabase.rpc('credit_wallet', {
+          p_user_id: userId,
+          p_amount: amount,
+          p_reference_type: 'razorpay_topup',
+          p_reference_id: null,
+          p_idempotency_key: idemKey,
+          p_description: `Wallet recharge via Razorpay (${paymentId})`,
+          p_created_by: null,
+        });
 
-        const currentBalance = profile?.wallet_balance || 0;
-        const newBalance = currentBalance + amount;
-
-        const { error: updateError } = await supabase
-          .from('customers')
-          .update({ wallet_balance: newBalance })
-          .eq('user_id', userId);
-
-        if (updateError) {
-          console.error('❌ Failed to update wallet balance:', updateError);
+        if (error) {
+          // Check if it's a duplicate (idempotency)
+          if (error.message?.includes('duplicate')) {
+            console.log('✅ Payment already processed (idempotency)');
+            return true;
+          }
+          console.error('❌ Failed to credit wallet:', error);
           return false;
         }
 
-        const { error: transactionError } = await supabase
-          .from('wallet_transactions')
-          .insert({
-            user_id: userId,
-            amount: amount,
-            description: `Wallet recharge via Razorpay (dev)`,
-            payment_method: 'razorpay',
-            payment_id: paymentId,
-            metadata: {
-              razorpay_payment_id: paymentId,
-              razorpay_order_id: orderId,
-              timestamp: new Date().toISOString(),
-            },
-          });
-
-        if (transactionError) {
-          console.error('❌ Failed to record transaction:', transactionError);
-          return false;
-        }
-
-        console.log('✅ Wallet transaction recorded (dev):', { userId, amount, newBalance, paymentId });
+        console.log('✅ Wallet credited (dev):', { userId, amount, paymentId, ledgerId: data });
         return true;
       }
     } catch (error) {

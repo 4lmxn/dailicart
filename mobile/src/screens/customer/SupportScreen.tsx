@@ -29,8 +29,15 @@ import {
   TicketAttachment,
 } from '../../services/api/support';
 
+export interface SupportPrefill {
+  category?: TicketCategory;
+  subject?: string;
+  description?: string;
+}
+
 interface SupportScreenProps {
   onBack: () => void;
+  prefill?: SupportPrefill;
 }
 
 const CATEGORIES: { value: TicketCategory; label: string; icon: string }[] = [
@@ -39,6 +46,7 @@ const CATEGORIES: { value: TicketCategory; label: string; icon: string }[] = [
   { value: 'payment', label: 'Payment Issue', icon: '💳' },
   { value: 'refund', label: 'Refund Request', icon: '💰' },
   { value: 'subscription', label: 'Subscription', icon: '📋' },
+  { value: 'address_change', label: 'Address Change', icon: '📍' },
   { value: 'other', label: 'Other', icon: '❓' },
 ];
 
@@ -79,16 +87,23 @@ const SUBJECT_SUGGESTIONS: Record<TicketCategory, string[]> = {
     'Unable to cancel subscription',
     'Subscription showing wrong dates',
   ],
+  address_change: [
+    'Request to change my delivery address',
+    'Request to update society/building',
+    'Request to change flat/unit number',
+    'Request to delete an address',
+    'Moving to a new location',
+  ],
   other: [
-    'Update my delivery address',
     'Change my phone number',
-    'Add new delivery location',
     'General feedback/suggestion',
     'Account related query',
+    'App not working properly',
+    'Other issue',
   ],
 };
 
-export const SupportScreen: React.FC<SupportScreenProps> = ({ onBack }) => {
+export const SupportScreen: React.FC<SupportScreenProps> = ({ onBack, prefill }) => {
   const { user } = useAuthStore();
   const toast = useToast();
   const [loading, setLoading] = useState(true);
@@ -101,9 +116,9 @@ export const SupportScreen: React.FC<SupportScreenProps> = ({ onBack }) => {
 
   // New ticket modal
   const [showNewTicket, setShowNewTicket] = useState(false);
-  const [newCategory, setNewCategory] = useState<TicketCategory>('other');
-  const [newSubject, setNewSubject] = useState('');
-  const [newDescription, setNewDescription] = useState('');
+  const [newCategory, setNewCategory] = useState<TicketCategory>(prefill?.category || 'other');
+  const [newSubject, setNewSubject] = useState(prefill?.subject || '');
+  const [newDescription, setNewDescription] = useState(prefill?.description || '');
   const [newPhotos, setNewPhotos] = useState<Array<{ uri: string; fileName: string }>>([]);
   const [creating, setCreating] = useState(false);
 
@@ -111,6 +126,13 @@ export const SupportScreen: React.FC<SupportScreenProps> = ({ onBack }) => {
   const [replyText, setReplyText] = useState('');
   const [replyPhotos, setReplyPhotos] = useState<Array<{ uri: string; fileName: string }>>([]);
   const [sending, setSending] = useState(false);
+
+  // Handle prefill data - auto-open new ticket modal
+  useEffect(() => {
+    if (prefill?.category) {
+      setShowNewTicket(true);
+    }
+  }, [prefill]);
 
   const loadTickets = useCallback(async () => {
     if (!user?.id) return;

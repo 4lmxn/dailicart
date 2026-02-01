@@ -87,12 +87,18 @@ export const CustomerNavigator = () => {
       </Stack.Screen>
       <Stack.Screen name="Profile">
         {({ navigation }) => (
-          <ProfileScreen onBack={() => navigation.goBack()} />
+          <ProfileScreen 
+            onBack={() => navigation.goBack()} 
+            onNavigateToSupport={(prefill) => navigation.navigate('Support', { prefill })}
+          />
         )}
       </Stack.Screen>
       <Stack.Screen name="Support">
-        {({ navigation }) => (
-          <SupportScreen onBack={() => navigation.goBack()} />
+        {({ navigation, route }) => (
+          <SupportScreen 
+            onBack={() => navigation.goBack()} 
+            prefill={route.params?.prefill}
+          />
         )}
       </Stack.Screen>
     </Stack.Navigator>

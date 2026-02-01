@@ -1,4 +1,5 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { SupportPrefill } from '../screens/customer/SupportScreen';
 
 // Auth Stack
 export type AuthStackParamList = {
@@ -23,7 +24,7 @@ export type CustomerStackParamList = {
   Calendar: undefined;
   Wallet: undefined;
   Profile: undefined;
-  Support: undefined;
+  Support: { prefill?: SupportPrefill } | undefined;
 };
 
 export type CustomerScreenProps<T extends keyof CustomerStackParamList> = NativeStackScreenProps<
