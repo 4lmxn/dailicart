@@ -1,3 +1,16 @@
+export type DevBypassRole = 'selector' | 'customer' | 'admin' | 'distributor';
+
+const rawDevBypassRole = String(process.env.EXPO_PUBLIC_DEV_MODE_ROLE || '').trim().toLowerCase();
+
+const devBypassRole = (
+  rawDevBypassRole === 'selector' ||
+  rawDevBypassRole === 'customer' ||
+  rawDevBypassRole === 'admin' ||
+  rawDevBypassRole === 'distributor'
+)
+  ? (rawDevBypassRole as DevBypassRole)
+  : null;
+
 // App Configuration
 export const config = {
   // API Configuration - Uses Supabase Edge Functions
@@ -42,7 +55,17 @@ export const config = {
     enablePushNotifications: true,
     enableBiometricAuth: false, // Phase 2
   },
+
+  // Temporary development-only auth bypass for role testing.
+  dev: {
+    bypassRole: devBypassRole,
+    customerUserId: String(process.env.EXPO_PUBLIC_DEV_CUSTOMER_USER_ID || '').trim(),
+    adminUserId: String(process.env.EXPO_PUBLIC_DEV_ADMIN_USER_ID || '').trim(),
+    distributorUserId: String(process.env.EXPO_PUBLIC_DEV_DISTRIBUTOR_USER_ID || '').trim(),
+  },
 };
 
 // Development mode check
 export const isDev = __DEV__;
+
+export const isDevBypassEnabled = Boolean(config.dev.bypassRole);

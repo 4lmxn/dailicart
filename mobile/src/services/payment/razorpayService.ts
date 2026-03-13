@@ -261,33 +261,39 @@ class RazorpayService {
       
       if (RAZORPAY_CONFIG.MODE === 'prod') {
         // Production: the razorpay_verify Edge Function already credited the wallet
-        // This method is called for backward compatibility but the credit already happened
         console.log('✅ Wallet already credited by razorpay_verify Edge Function');
         return true;
       } else {
-        // Development: use the secure RPC function (same as production DB)
-        const { data, error } = await supabase.rpc('credit_wallet', {
-          p_user_id: userId,
-          p_amount: amount,
-          p_reference_type: 'razorpay_topup',
-          p_reference_id: null,
-          p_idempotency_key: idemKey,
-          p_description: `Wallet recharge via Razorpay (${paymentId})`,
-          p_created_by: null,
+        // Development: route through razorpay_verify Edge Function (same as prod)
+        // credit_wallet RPC is restricted to service_role only — cannot call directly
+        const { data, error } = await supabase.functions.invoke('razorpay_verify', {
+          body: {
+            razorpay_payment_id: paymentId,
+            razorpay_order_id: orderId,
+            razorpay_signature: 'dev-mode-skip',
+            amount,
+            idempotency_key: idemKey,
+          },
         });
 
         if (error) {
-          // Check if it's a duplicate (idempotency)
-          if (error.message?.includes('duplicate')) {
-            console.log('✅ Payment already processed (idempotency)');
-            return true;
-          }
-          console.error('❌ Failed to credit wallet:', error);
+          console.error('❌ Failed to credit wallet via Edge Function:', error);
           return false;
         }
 
-        console.log('✅ Wallet credited (dev):', { userId, amount, paymentId, ledgerId: data });
-        return true;
+        if (data?.ok) {
+          console.log('✅ Wallet credited (dev):', { userId, amount, paymentId });
+          return true;
+        }
+
+        // Check if already processed
+        if (data?.message?.includes('already')) {
+          console.log('✅ Payment already processed (idempotency)');
+          return true;
+        }
+
+        console.error('❌ Edge Function returned error:', data);
+        return false;
       }
     } catch (error) {
       console.error('❌ Error recording wallet transaction:', error);

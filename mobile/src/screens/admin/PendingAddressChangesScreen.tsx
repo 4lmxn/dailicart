@@ -21,6 +21,7 @@ import { supabase } from '../../services/supabase';
 import { theme } from '../../theme';
 import { Badge } from '../../components/ui';
 import { SkeletonList } from '../../components/Skeleton';
+import { getAuthUserId } from '../../utils/auth';
 
 interface PendingAddressChangesScreenProps {
   onBack: () => void;
@@ -294,9 +295,11 @@ export const PendingAddressChangesScreen: React.FC<PendingAddressChangesScreenPr
       if (ticketError) throw ticketError;
 
       // 7. Add resolution message
+      const adminUserId = await getAuthUserId();
+
       await supabase.from('ticket_messages').insert({
         ticket_id: selectedRequest.ticket_id,
-        user_id: (await supabase.auth.getUser()).data.user?.id,
+        user_id: adminUserId,
         message: `✅ Address change approved!\n\nNew address: ${society.name}, ${tower.name}, Unit ${unit.number} (Floor ${unit.floor})\n\nYour subscriptions have been updated to deliver to this address.`,
         is_internal: false,
       });
@@ -343,9 +346,11 @@ export const PendingAddressChangesScreen: React.FC<PendingAddressChangesScreenPr
               if (ticketError) throw ticketError;
 
               // Add rejection message
+              const adminUserId = await getAuthUserId();
+
               await supabase.from('ticket_messages').insert({
                 ticket_id: selectedRequest.ticket_id,
-                user_id: (await supabase.auth.getUser()).data.user?.id,
+                user_id: adminUserId,
                 message: `❌ Address change request rejected.\n\n${resolution || 'Please contact support for more information.'}`,
                 is_internal: false,
               });

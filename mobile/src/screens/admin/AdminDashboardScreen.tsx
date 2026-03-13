@@ -1148,8 +1148,8 @@ export const AdminDashboardScreen: React.FC = () => {
                 onPress={async () => {
                   try {
                     if (sub.status === 'active') {
-                      const today = new Date().toISOString().slice(0,10);
-                      const end = new Date(Date.now() + 3*24*3600*1000).toISOString().slice(0,10);
+                      const today = getLocalDateString();
+                      const end = getLocalDateOffsetString(3);
                       // Pause subscription directly
                       const { error } = await supabase
                         .from('subscriptions')

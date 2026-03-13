@@ -7,6 +7,12 @@ import { supabase } from '../services/supabase';
 import { CustomerProfileService } from '../services/api/customerProfile';
 import { setSentryUser, clearSentryUser } from '../services/sentry';
 import { clearAllCache, cacheUserProfile } from '../services/offlineCache';
+import {
+  clearSelectedDevBypassRole,
+  getDevBypassUser,
+  getEffectiveDevBypassRole,
+  isDevBypassSelectorMode,
+} from '../utils/devBypass';
 
 // Helper to map AuthUser/SupabaseUser to our User type - eliminates duplication
 function mapToUser(source: AuthUser | { id: string; email?: string | null; phone?: string | null; user_metadata?: any }): User {
@@ -184,8 +190,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   logout: async () => {
     try {
-      // Sign out from Supabase
-      await AuthService.signOut();
+      const devBypassRole = await getEffectiveDevBypassRole();
+
+      if (!devBypassRole) {
+        // Sign out from Supabase only for real authenticated sessions.
+        await AuthService.signOut();
+      }
+
+      if (isDevBypassSelectorMode()) {
+        await clearSelectedDevBypassRole();
+      }
 
       // Clear Sentry user context
       clearSentryUser();
@@ -199,6 +213,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         accessToken: null,
         isAuthenticated: false,
         isLoading: false,
+        initializing: false,
       });
     } catch (error) {
       console.error('[logout Error]', error);
@@ -223,6 +238,38 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   loadUserFromStorage: async () => {
     try {
       set({ isLoading: true, initializing: true });
+
+      const devBypassRole = await getEffectiveDevBypassRole();
+      if (devBypassRole) {
+        const devUser = getDevBypassUser(devBypassRole);
+
+        set({
+          user: devUser,
+          accessToken: null,
+          isAuthenticated: true,
+          isLoading: false,
+          initializing: false,
+          accountLocked: false,
+          lockExpiresAt: null,
+        });
+
+        setSentryUser({
+          id: devUser.id,
+          phone: devUser.phone,
+          email: devUser.email,
+          role: devUser.role,
+        });
+
+        cacheUserProfile({
+          id: devUser.id,
+          name: devUser.name,
+          phone: devUser.phone,
+          email: devUser.email,
+          role: devUser.role,
+        });
+
+        return;
+      }
 
       const session = await AuthService.getSession();
       

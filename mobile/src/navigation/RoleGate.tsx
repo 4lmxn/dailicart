@@ -3,6 +3,8 @@ import { View, ActivityIndicator } from 'react-native';
 import { useAuthStore } from '../store/authStore';
 import { theme } from '../theme';
 import { supabase } from '../services/supabase';
+import { getEffectiveDevBypassRole, isDevBypassSelectorMode } from '../utils/devBypass';
+import { isDevBypassEnabled } from '../config';
 
 interface RoleGateProps {
   onCustomer: () => void;
@@ -10,6 +12,7 @@ interface RoleGateProps {
   onDistributor: () => void;
   onOnboarding: () => void;
   onAuth: () => void;
+  onDevRoleSelector: () => void;
 }
 
 /**
@@ -22,6 +25,7 @@ export const RoleGate: React.FC<RoleGateProps> = ({
   onDistributor,
   onOnboarding,
   onAuth,
+  onDevRoleSelector,
 }) => {
   const { isAuthenticated, user, initializing } = useAuthStore();
   const [checkingAddress, setCheckingAddress] = useState(false);
@@ -30,6 +34,29 @@ export const RoleGate: React.FC<RoleGateProps> = ({
     let cancelled = false;
     const run = async () => {
       if (initializing) return;
+
+      if (isDevBypassEnabled) {
+        const devBypassRole = await getEffectiveDevBypassRole();
+
+        if (!devBypassRole && isDevBypassSelectorMode()) {
+          onDevRoleSelector();
+          return;
+        }
+
+        switch (devBypassRole) {
+          case 'customer':
+            onCustomer();
+            return;
+          case 'admin':
+            onAdmin();
+            return;
+          case 'distributor':
+            onDistributor();
+            return;
+          default:
+            break;
+        }
+      }
 
       if (!isAuthenticated) {
         onAuth();
@@ -71,7 +98,7 @@ export const RoleGate: React.FC<RoleGateProps> = ({
     };
     run();
     return () => { cancelled = true; };
-  }, [isAuthenticated, user, initializing, onCustomer, onAdmin, onDistributor, onOnboarding, onAuth]);
+  }, [isAuthenticated, user, initializing, onCustomer, onAdmin, onDistributor, onOnboarding, onAuth, onDevRoleSelector]);
 
   if (initializing || checkingAddress) {
     return (

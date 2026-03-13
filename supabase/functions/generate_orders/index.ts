@@ -4,6 +4,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.43.1';
 import { corsHeaders, handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
+import { getIstDateString, addDaysIst } from '../_shared/date.ts';
 import { checkRateLimit, rateLimitResponse } from '../_shared/rateLimit.ts';
 
 Deno.serve(async (req) => {
@@ -57,8 +58,8 @@ Deno.serve(async (req) => {
       try { body = await req.json(); } catch { /* ignore */ }
     }
 
-    const today = new Date().toISOString().slice(0, 10);
-    const thirtyDaysLater = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const today = getIstDateString();
+    const thirtyDaysLater = addDaysIst(new Date(), 30);
 
     const p_start = String(body.start || url.searchParams.get('start') || today);
     const p_end = String(body.end || url.searchParams.get('end') || thirtyDaysLater);

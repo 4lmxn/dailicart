@@ -16,6 +16,9 @@ export const RATE_LIMITS: Record<string, RateLimitConfig> = {
   'payment:verify': { maxRequests: 5, windowSeconds: 60 },
   'payment:initiate': { maxRequests: 3, windowSeconds: 60 },
   
+  // Admin wallet operations
+  'wallet:admin': { maxRequests: 20, windowSeconds: 60 },
+  
   // Analytics - moderate limits (admin-only endpoints)
   'analytics:revenue': { maxRequests: 30, windowSeconds: 60 },
   'analytics:customers': { maxRequests: 30, windowSeconds: 60 },

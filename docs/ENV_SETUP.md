@@ -48,8 +48,14 @@ EXPO_PUBLIC_SUPABASE_URL= https://<project>.supabase.co
 EXPO_PUBLIC_SUPABASE_ANON_KEY= <anon-key>
 SUPABASE_SERVICE_ROLE_KEY= <service-role>   # only for local seeds
 EXPO_PUBLIC_RAZORPAY_KEY_ID= <razorpay-test-key>
+EXPO_PUBLIC_DEV_MODE_ROLE= selector         # optional: selector|customer|admin|distributor
+EXPO_PUBLIC_DEV_CUSTOMER_USER_ID= <uuid>    # optional but recommended for customer testing
+EXPO_PUBLIC_DEV_ADMIN_USER_ID= <uuid>       # optional but recommended for admin testing
+EXPO_PUBLIC_DEV_DISTRIBUTOR_USER_ID= <uuid> # optional but recommended for distributor testing
 ```
 Never commit `SUPABASE_SERVICE_ROLE_KEY`.
+
+For temporary role bypass testing, set `EXPO_PUBLIC_DEV_MODE_ROLE=selector` to get an in-app role picker. Remove that variable after testing to restore normal auth. If you want live data to load correctly, set the `EXPO_PUBLIC_DEV_*_USER_ID` values to real `users.id` values for each role.
 
 ## 7. Supabase Project Setup
 Follow `supabase/SETUP_GUIDE.md`: run `schema.sql`, then seeds (`seed.sql`). If using Supabase CLI locally:

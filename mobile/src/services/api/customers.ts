@@ -473,29 +473,37 @@ export class CustomerAdminService {
       const idempotencyKey = `admin_adjust_${customerId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       
       if (amount > 0) {
-        // Credit operation
-        const { error } = await supabase.rpc('credit_wallet', {
-          p_user_id: customerId,
-          p_amount: amount,
-          p_reference_type: 'admin_adjustment',
-          p_reference_id: null,
-          p_idempotency_key: idempotencyKey,
-          p_description: reason || 'Admin wallet credit',
+        // Credit operation — must go through Edge Function (credit_wallet is service_role only)
+        const { data, error } = await supabase.functions.invoke('wallet_admin', {
+          body: {
+            action: 'credit',
+            user_id: customerId,
+            amount,
+            reference_type: 'admin_adjustment',
+            reference_id: null,
+            idempotency_key: idempotencyKey,
+            description: reason || 'Admin wallet credit',
+          },
         });
-        
+
         if (error) throw error;
+        if (!data?.ok) throw new Error(data?.message || 'Failed to credit wallet');
       } else if (amount < 0) {
-        // Debit operation
-        const { error } = await supabase.rpc('debit_wallet', {
-          p_user_id: customerId,
-          p_amount: Math.abs(amount),
-          p_reference_type: 'admin_adjustment',
-          p_reference_id: null,
-          p_idempotency_key: idempotencyKey,
-          p_description: reason || 'Admin wallet debit',
+        // Debit operation — also route through Edge Function for consistency
+        const { data, error } = await supabase.functions.invoke('wallet_admin', {
+          body: {
+            action: 'debit',
+            user_id: customerId,
+            amount: Math.abs(amount),
+            reference_type: 'admin_adjustment',
+            reference_id: null,
+            idempotency_key: idempotencyKey,
+            description: reason || 'Admin wallet debit',
+          },
         });
-        
+
         if (error) throw error;
+        if (!data?.ok) throw new Error(data?.message || 'Failed to debit wallet');
       }
       // amount === 0 is a no-op
     } catch (error) {

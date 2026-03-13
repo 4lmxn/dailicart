@@ -202,61 +202,26 @@ export class WalletService {
   }
 
   /**
-   * Get legacy wallet transactions (for backward compatibility)
+   * Get wallet transactions from the immutable ledger.
    */
   static async getTransactions(
     userId: string,
     limit: number = 50
   ): Promise<WalletTransaction[]> {
     try {
-      // First try to get from wallet_ledger (preferred)
       const ledgerEntries = await this.getLedgerEntries(userId, limit);
-      
-      if (ledgerEntries.length > 0) {
-        return ledgerEntries.map(entry => ({
-          id: entry.id,
-          customerId: entry.userId,
-          transaction_type: entry.entryType,
-          type: entry.entryType, // For WalletScreen compatibility
-          amount: entry.amount,
-          balanceAfter: entry.balanceAfter,
-          description: entry.description || 'Wallet transaction',
-          status: 'completed' as const,
-          createdAt: entry.createdAt,
-          date: new Date(entry.createdAt).toLocaleDateString('en-IN', {
-            day: 'numeric',
-            month: 'short',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-          }),
-        }));
-      }
 
-      // Fallback to wallet_transactions table
-      const { data, error } = await supabase
-        .from('wallet_transactions')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('status', 'completed')
-        .order('created_at', { ascending: false })
-        .limit(limit);
-
-      if (error) throw error;
-
-      return (data || []).map(txn => ({
-        id: txn.id,
-        customerId: txn.user_id,
-        transaction_type: txn.transaction_type === 'credit' ? 'credit' : 'debit',
-        type: txn.transaction_type === 'credit' ? 'credit' : 'debit', // For WalletScreen compatibility
-        amount: txn.amount,
-        balanceAfter: txn.balance_after || 0,
-        description: txn.description || 'Wallet transaction',
-        paymentMethod: txn.payment_method,
-        paymentId: txn.payment_id,
-        status: txn.status,
-        createdAt: txn.created_at,
-        date: new Date(txn.created_at).toLocaleDateString('en-IN', {
+      return ledgerEntries.map(entry => ({
+        id: entry.id,
+        customerId: entry.userId,
+        transaction_type: entry.entryType,
+        type: entry.entryType, // For WalletScreen compatibility
+        amount: entry.amount,
+        balanceAfter: entry.balanceAfter,
+        description: entry.description || 'Wallet transaction',
+        status: 'completed' as const,
+        createdAt: entry.createdAt,
+        date: new Date(entry.createdAt).toLocaleDateString('en-IN', {
           day: 'numeric',
           month: 'short',
           year: 'numeric',
@@ -271,8 +236,12 @@ export class WalletService {
   }
 
   /**
-   * Credit wallet using secure RPC function
-   * This function uses idempotency keys to prevent double-credits
+   * Credit wallet via wallet_admin Edge Function (service_role only).
+   * Direct RPC calls to credit_wallet are blocked for client-side users.
+   * This routes through the Edge Function which runs as service_role.
+   *
+   * NOTE: For Razorpay top-ups, the razorpay_verify Edge Function handles
+   * crediting automatically — do NOT call this for payment top-ups.
    */
   static async creditWallet(
     userId: string,
@@ -302,23 +271,28 @@ export class WalletService {
     try {
       const key = idempotencyKey || generateIdempotencyKey('CREDIT');
 
-      const { data, error } = await supabase
-        .rpc('credit_wallet', {
-          p_user_id: userId,
-          p_amount: amount,
-          p_reference_type: referenceType,
-          p_reference_id: referenceId,
-          p_idempotency_key: key,
-          p_description: description,
-          p_created_by: null,
-        });
+      const { data, error } = await supabase.functions.invoke('wallet_admin', {
+        body: {
+          action: 'credit',
+          user_id: userId,
+          amount,
+          reference_type: referenceType,
+          reference_id: referenceId,
+          idempotency_key: key,
+          description,
+        },
+      });
 
       if (error) {
         console.error('Error crediting wallet:', error);
         throw new Error(error.message || 'Failed to credit wallet');
       }
 
-      return data; // Returns ledger entry ID
+      if (!data?.ok) {
+        throw new Error(data?.message || 'Failed to credit wallet');
+      }
+
+      return data.ledger_id; // Returns ledger entry ID
     } catch (error) {
       console.error('Credit wallet error:', error);
       throw error;

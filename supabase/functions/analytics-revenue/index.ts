@@ -4,6 +4,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.43.4';
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
+import { addDaysIst, getIstDateString } from '../_shared/date.ts';
 import { checkRateLimit, rateLimitResponse } from '../_shared/rateLimit.ts';
 
 Deno.serve(async (req) => {
@@ -53,8 +54,8 @@ Deno.serve(async (req) => {
 
     const end = new Date();
     const start = new Date(end.getTime() - (days - 1) * 86400000);
-    const startDate = start.toISOString().slice(0, 10);
-    const endDate = end.toISOString().slice(0, 10);
+    const startDate = getIstDateString(start);
+    const endDate = getIstDateString(end);
 
     // Query delivered orders
     const { data: rows, error: qErr } = await supabase
@@ -74,7 +75,7 @@ Deno.serve(async (req) => {
     // Fill missing dates
     const points: { date: string; amount: number }[] = [];
     for (let i = 0; i < days; i++) {
-      const d = new Date(start.getTime() + i * 86400000).toISOString().slice(0, 10);
+      const d = addDaysIst(start, i);
       points.push({ date: d.slice(5, 10), amount: map[d] || 0 });
     }
 

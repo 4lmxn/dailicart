@@ -14,6 +14,19 @@ interface RateLimitEntry {
 // In-memory rate limit store
 const rateLimitStore = new Map<string, RateLimitEntry>();
 
+// Periodically prune expired entries to prevent unbounded memory growth
+const PRUNE_INTERVAL_MS = 5 * 60_000; // Every 5 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, entry] of rateLimitStore) {
+    // Remove entries whose window expired and are not blocked
+    const maxWindowMs = 600_000; // 10 min (longest possible window + block)
+    if ((now - entry.windowStart) > maxWindowMs && (!entry.blockedUntil || entry.blockedUntil < now)) {
+      rateLimitStore.delete(key);
+    }
+  }
+}, PRUNE_INTERVAL_MS);
+
 // Default limits for different action types
 const ACTION_LIMITS: Record<string, { maxRequests: number; windowMs: number; blockDurationMs: number }> = {
   // Auth actions - strict limits

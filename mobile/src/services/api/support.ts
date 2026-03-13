@@ -833,18 +833,24 @@ export class SupportService {
         };
       }
 
-      // Use credit_wallet RPC for proper double-entry ledger accounting
-      const { error: creditError } = await supabase.rpc('credit_wallet', {
-        p_user_id: ticket.userId,
-        p_amount: amount,
-        p_idempotency_key: idempotencyKey,
-        p_reference_type: isRefund ? 'refund' : 'support_credit',
-        p_reference_id: ticketId,
-        p_description: isRefund
-          ? `Refund for ticket #${ticket.ticketNumber}`
-          : `Support credit for ticket #${ticket.ticketNumber}`,
-        p_created_by: adminId,
+      // Credit via wallet_admin Edge Function (credit_wallet is service_role only)
+      const { data: creditData, error: creditError } = await supabase.functions.invoke('wallet_admin', {
+        body: {
+          action: 'credit',
+          user_id: ticket.userId,
+          amount,
+          idempotency_key: idempotencyKey,
+          reference_type: isRefund ? 'refund' : 'support_credit',
+          reference_id: ticketId,
+          description: isRefund
+            ? `Refund for ticket #${ticket.ticketNumber}`
+            : `Support credit for ticket #${ticket.ticketNumber}`,
+        },
       });
+
+      if (!creditError && !creditData?.ok) {
+        return { success: false, message: creditData?.message || 'Failed to credit wallet' };
+      }
 
       if (creditError) {
         console.error('Error crediting wallet:', creditError);

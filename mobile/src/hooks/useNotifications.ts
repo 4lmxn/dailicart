@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 import * as Notifications from 'expo-notifications';
-import { useNavigation } from '@react-navigation/native';
+import { navigationRef } from '../navigation/RootNavigator';
 import { NotificationService, NotificationType } from '../services/notifications/notificationService';
 import { useAuthStore } from '../store/authStore';
 
@@ -11,7 +11,6 @@ import { useAuthStore } from '../store/authStore';
  */
 export function useNotifications() {
   const { user, isAuthenticated } = useAuthStore();
-  const navigation = useNavigation();
   const notificationListener = useRef<Notifications.Subscription | null>(null);
   const responseListener = useRef<Notifications.Subscription | null>(null);
   const appState = useRef<AppStateStatus>(AppState.currentState);
@@ -71,15 +70,15 @@ export function useNotifications() {
 
     // Navigate based on notification type/screen
     const screen = data?.screen;
-    if (screen && navigation) {
+    if (screen && navigationRef.isReady()) {
       try {
         // @ts-ignore - dynamic navigation
-        navigation.navigate(screen, data);
+        navigationRef.navigate(screen, data);
       } catch (error) {
         console.error('Error navigating from notification:', error);
       }
     }
-  }, [navigation]);
+  }, []);
 
   // Handle app state changes (for badge management)
   useEffect(() => {

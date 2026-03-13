@@ -831,7 +831,11 @@ CREATE OR REPLACE FUNCTION credit_wallet(
     p_description TEXT,
     p_created_by UUID DEFAULT NULL
 )
-RETURNS UUID AS $$
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
 DECLARE
     v_customer_id UUID;
     v_current_balance NUMERIC;
@@ -841,6 +845,11 @@ DECLARE
     v_is_locked BOOLEAN;
     v_rate_allowed BOOLEAN;
 BEGIN
+    -- Validate amount is positive
+    IF p_amount IS NULL OR p_amount <= 0 THEN
+        RAISE EXCEPTION 'Amount must be a positive number, got: %', p_amount;
+    END IF;
+
     -- Check idempotency first
     SELECT id INTO v_ledger_id FROM wallet_ledger WHERE idempotency_key = p_idempotency_key;
     IF v_ledger_id IS NOT NULL THEN
@@ -892,7 +901,11 @@ BEGIN
     
     RETURN v_ledger_id;
 END;
-$$ LANGUAGE plpgsql;
+$$;
+
+-- Only service_role (Edge Functions) can credit wallets — block all direct client calls
+REVOKE EXECUTE ON FUNCTION credit_wallet(UUID, NUMERIC, TEXT, UUID, TEXT, TEXT, UUID) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION credit_wallet(UUID, NUMERIC, TEXT, UUID, TEXT, TEXT, UUID) TO service_role;
 
 -- Debit wallet with proper locking
 CREATE OR REPLACE FUNCTION debit_wallet(
@@ -904,7 +917,11 @@ CREATE OR REPLACE FUNCTION debit_wallet(
     p_description TEXT,
     p_created_by UUID DEFAULT NULL
 )
-RETURNS UUID AS $$
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
 DECLARE
     v_customer_id UUID;
     v_current_balance NUMERIC;
@@ -913,7 +930,24 @@ DECLARE
     v_ledger_id UUID;
     v_is_locked BOOLEAN;
     v_rate_allowed BOOLEAN;
+    v_caller_role TEXT;
 BEGIN
+    -- Validate amount is positive
+    IF p_amount IS NULL OR p_amount <= 0 THEN
+        RAISE EXCEPTION 'Amount must be a positive number, got: %', p_amount;
+    END IF;
+
+    -- Authorization: only the wallet owner or service_role can debit
+    v_caller_role := current_setting('request.jwt.claim.role', true);
+    IF v_caller_role IS DISTINCT FROM 'service_role' THEN
+        IF auth.uid() IS NULL THEN
+            RAISE EXCEPTION 'Authentication required';
+        END IF;
+        IF auth.uid() != p_user_id THEN
+            RAISE EXCEPTION 'Not authorized to debit another user''s wallet';
+        END IF;
+    END IF;
+
     -- Check idempotency first
     SELECT id INTO v_ledger_id FROM wallet_ledger WHERE idempotency_key = p_idempotency_key;
     IF v_ledger_id IS NOT NULL THEN
@@ -970,7 +1004,7 @@ BEGIN
     
     RETURN v_ledger_id;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 -- Get wallet balance with holds
 CREATE OR REPLACE FUNCTION get_wallet_balance(p_user_id UUID)
@@ -979,8 +1013,22 @@ RETURNS TABLE(
     held_amount NUMERIC,
     total_balance NUMERIC,
     is_locked BOOLEAN
-) AS $$
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
 BEGIN
+    -- Authorization: users can only query their own balance (service_role can query any)
+    IF current_setting('request.jwt.claim.role', true) IS DISTINCT FROM 'service_role' THEN
+        IF auth.uid() IS NULL THEN
+            RAISE EXCEPTION 'Authentication required';
+        END IF;
+        IF auth.uid() != p_user_id THEN
+            RAISE EXCEPTION 'Not authorized to view another user''s wallet balance';
+        END IF;
+    END IF;
+
     RETURN QUERY
     SELECT 
         c.wallet_balance AS available_balance,
@@ -998,7 +1046,7 @@ BEGIN
     FROM customers c
     WHERE c.user_id = p_user_id;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 -- =============================================================================
 -- SUBSCRIPTION & ORDER FUNCTIONS

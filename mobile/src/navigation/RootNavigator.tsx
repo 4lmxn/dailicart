@@ -9,10 +9,11 @@ import { AdminNavigator } from './AdminNavigator';
 import { DistributorNavigator } from './DistributorNavigator';
 import { RoleGate } from './RoleGate';
 import OnboardingScreen from '../screens/auth/OnboardingScreen';
+import { DevRoleSelectorScreen } from '../screens/dev/DevRoleSelectorScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
-const navigationRef = createNavigationContainerRef<RootStackParamList>();
+export const navigationRef = createNavigationContainerRef<RootStackParamList>();
 
 const linking = {
   prefixes: ['dailicart://', 'https://dailicart.in'],
@@ -81,6 +82,7 @@ export const RootNavigator = () => {
           <Stack.Screen name="Customer" component={CustomerNavigator} />
           <Stack.Screen name="Admin" component={AdminNavigator} />
           <Stack.Screen name="Distributor" component={DistributorNavigator} />
+          <Stack.Screen name="DevRoleSelector" component={DevRoleSelectorScreen} />
         </Stack.Navigator>
       </NavigationContainer>
 
@@ -90,6 +92,7 @@ export const RootNavigator = () => {
         onCustomer={() => { if (navigationRef.isReady()) navigationRef.navigate('Customer'); }}
         onAdmin={() => { if (navigationRef.isReady()) navigationRef.navigate('Admin'); }}
         onDistributor={() => { if (navigationRef.isReady()) navigationRef.navigate('Distributor'); }}
+        onDevRoleSelector={() => { if (navigationRef.isReady()) navigationRef.navigate('DevRoleSelector'); }}
       />
     </>
   );

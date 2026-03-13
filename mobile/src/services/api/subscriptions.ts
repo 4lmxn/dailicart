@@ -3,6 +3,7 @@ import { Subscription } from './types';
 import { uuidSchema, safeValidate, z } from '../../utils/validation';
 import { getLocalDateString } from '../../utils/helpers';
 import { checkRateLimit } from '../../utils/rateLimit';
+import { getAuthUserId } from '../../utils/auth';
 
 // Local subscription validation schema
 const subscriptionQuantitySchema = z.number().int().min(1, 'Minimum quantity is 1').max(10, 'Maximum quantity is 10');
@@ -247,8 +248,8 @@ export class SubscriptionService {
   ): Promise<void> {
     try {
       // Verify current user owns this subscription
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
+      const userId = await getAuthUserId();
+      if (!userId) throw new Error('Not authenticated');
       
       // Validate pause days (max 90 days)
       if (pauseDays < 1 || pauseDays > 90) {
@@ -272,7 +273,7 @@ export class SubscriptionService {
           updated_at: new Date().toISOString(),
         })
         .eq('id', subscriptionId)
-        .eq('user_id', user.id) // Ownership check
+        .eq('user_id', userId) // Ownership check
         .select('id');
 
       if (error) throw error;
@@ -291,8 +292,8 @@ export class SubscriptionService {
   static async resumeSubscription(subscriptionId: string): Promise<void> {
     try {
       // Verify current user owns this subscription
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
+      const userId = await getAuthUserId();
+      if (!userId) throw new Error('Not authenticated');
       
       const { data, error } = await supabase
         .from('subscriptions')
@@ -303,7 +304,7 @@ export class SubscriptionService {
           updated_at: new Date().toISOString(),
         })
         .eq('id', subscriptionId)
-        .eq('user_id', user.id) // Ownership check
+        .eq('user_id', userId) // Ownership check
         .select('id');
 
       if (error) throw error;
@@ -322,8 +323,8 @@ export class SubscriptionService {
   static async cancelSubscription(subscriptionId: string): Promise<void> {
     try {
       // Verify current user owns this subscription
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
+      const userId = await getAuthUserId();
+      if (!userId) throw new Error('Not authenticated');
       
       const { data, error } = await supabase
         .from('subscriptions')
@@ -332,7 +333,7 @@ export class SubscriptionService {
           updated_at: new Date().toISOString(),
         })
         .eq('id', subscriptionId)
-        .eq('user_id', user.id) // Ownership check
+        .eq('user_id', userId) // Ownership check
         .select('id');
 
       if (error) throw error;

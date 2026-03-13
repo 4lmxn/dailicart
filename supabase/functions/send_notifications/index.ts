@@ -34,9 +34,22 @@ Deno.serve(async (req) => {
   try {
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const CRON_SECRET = Deno.env.get('CRON_SECRET');
 
     if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
       return errorResponse('Missing Supabase env vars', 500);
+    }
+
+    // Auth: require either a valid service_role JWT or a CRON_SECRET header.
+    // This function has verify_jwt=false so cron jobs can call it without a JWT.
+    const authHeader = req.headers.get('Authorization') || '';
+    const cronHeader = req.headers.get('x-cron-secret') || '';
+
+    const hasServiceRole = authHeader.includes(SUPABASE_SERVICE_ROLE_KEY);
+    const hasCronSecret = CRON_SECRET && cronHeader === CRON_SECRET;
+
+    if (!hasServiceRole && !hasCronSecret) {
+      return errorResponse('Unauthorized — provide service_role key or x-cron-secret header', 401);
     }
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);

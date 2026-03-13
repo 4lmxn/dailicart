@@ -4,6 +4,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.43.4';
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
+import { getIstDateString } from '../_shared/date.ts';
 import { checkRateLimit, rateLimitResponse } from '../_shared/rateLimit.ts';
 
 Deno.serve(async (req) => {
@@ -44,8 +45,8 @@ Deno.serve(async (req) => {
       return errorResponse('Admin access required', 403);
     }
 
-    // Get today's date in ISO format
-    const today = new Date().toISOString().slice(0, 10);
+    // Get today's date in IST format
+    const today = getIstDateString();
 
     const { data, error } = await supabase
       .from('orders')

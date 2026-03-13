@@ -30,6 +30,12 @@ const supabase = createClient(url, serviceRoleKey, {
 
 function logStep(title) { console.log(`\n▶ ${title}`); }
 
+function getIstDateString(date = new Date()) {
+  const utcMillis = date.getTime() + date.getTimezoneOffset() * 60000;
+  const istMillis = utcMillis + 5.5 * 60 * 60000;
+  return new Date(istMillis).toISOString().slice(0, 10);
+}
+
 // Seed minimal societies/towers/units for demo and return a unit address
 async function seedSocietyStructure() {
   // Upsert a demo society
@@ -142,7 +148,7 @@ async function createSampleSubscriptions() {
 
   const frequencies = ['daily', 'alternate', 'weekly'];
   const today = new Date();
-  const startDate = today.toISOString().slice(0, 10);
+  const startDate = getIstDateString(today);
   for (let i = 0; i < products.length; i++) {
     const product = products[i];
     const freq = frequencies[i % frequencies.length];
@@ -177,7 +183,7 @@ async function seedCapacity() {
   const dates = [0, 1].map(offset => {
     const d = new Date();
     d.setDate(d.getDate() + offset);
-    return d.toISOString().slice(0, 10);
+    return getIstDateString(d);
   });
   for (const date of dates) {
     try {
@@ -201,7 +207,7 @@ async function seedDistributorAssignments() {
     console.log('⚠ Missing distributor or society; skip assignments');
     return;
   }
-  const today = new Date().toISOString().slice(0, 10);
+  const today = getIstDateString();
   // Note: distributor_building_assignments requires tower_id as well
   const { data: towerRows } = await supabase.from('society_towers').select('id').eq('society_id', societyId).limit(1);
   const towerId = towerRows?.[0]?.id;

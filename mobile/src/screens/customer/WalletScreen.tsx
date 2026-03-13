@@ -23,6 +23,7 @@ import { useToast } from '../../components/Toast';
 import { Skeleton } from '../../components/Skeleton';
 import { MINIMUM_BALANCE } from '../../constants';
 import { WalletService } from '../../services/api/wallet';
+import { getAuthUserId } from '../../utils/auth';
 
 const LOW_BALANCE_THRESHOLD = 150;
 const AUTO_RECHARGE_MIN = MINIMUM_BALANCE;
@@ -162,8 +163,8 @@ export const WalletScreen: React.FC<WalletScreenProps> = ({ onBack }) => {
               const { razorpayService } = await import('../../services/payment/razorpayService');
               const { generateIdempotencyKey } = await import('../../services/api/payment');
               
-              const { data: { user } } = await supabase.auth.getUser();
-              if (!user) {
+              const authUserId = await getAuthUserId();
+              if (!authUserId) {
                 Alert.alert('Error', 'Please login to continue');
                 setPaymentInProgress(false);
                 setVerificationStatus('idle');
@@ -173,7 +174,7 @@ export const WalletScreen: React.FC<WalletScreenProps> = ({ onBack }) => {
               const { data: profile, error: profileError } = await supabase
                 .from('users')
                 .select('id,name,phone,email')
-                .eq('id', user.id)
+                .eq('id', authUserId)
                 .maybeSingle();
 
               if (profileError || !profile) {
@@ -184,18 +185,18 @@ export const WalletScreen: React.FC<WalletScreenProps> = ({ onBack }) => {
               }
 
               // Generate idempotency key to prevent duplicate charges
-              const idempotencyKey = generateIdempotencyKey(user.id, 'razorpay');
+              const idempotencyKey = generateIdempotencyKey(authUserId, 'razorpay');
 
               toast.show('🔒 Opening secure payment gateway...', { type: 'info' });
 
               // Initiate Razorpay payment with userId and idempotency key
               const result = await razorpayService.initiatePayment({
                 amount: amount,
-                customerName: profile?.name || user.email || 'Customer',
-                customerEmail: user.email || '',
+                customerName: profile?.name || profile?.email || 'Customer',
+                customerEmail: profile?.email || '',
                 customerPhone: profile?.phone || '',
                 description: `Wallet recharge of ₹${amount}`,
-                userId: user.id,
+                userId: authUserId,
                 idempotencyKey,
               });
 
@@ -206,7 +207,7 @@ export const WalletScreen: React.FC<WalletScreenProps> = ({ onBack }) => {
 
                 // Record transaction (with retry logic built into service)
                 const recorded = await razorpayService.recordWalletTransaction(
-                  user.id,
+                  authUserId,
                   amount,
                   result.paymentId,
                   result.orderId || '',
@@ -220,7 +221,7 @@ export const WalletScreen: React.FC<WalletScreenProps> = ({ onBack }) => {
                   const { data: updatedProfile } = await supabase
                     .from('customers')
                     .select('wallet_balance')
-                    .eq('user_id', user.id)
+                    .eq('user_id', authUserId)
                     .maybeSingle();
 
                   const updatedBalance = updatedProfile?.wallet_balance || 0;
@@ -230,7 +231,7 @@ export const WalletScreen: React.FC<WalletScreenProps> = ({ onBack }) => {
                     const { data: pausedSubs, error: pausedError } = await supabase
                       .from('subscriptions')
                       .select('id')
-                      .eq('user_id', user.id)
+                      .eq('user_id', authUserId)
                       .eq('status', 'paused')
                       .is('pause_end_date', null);
 
@@ -258,7 +259,7 @@ export const WalletScreen: React.FC<WalletScreenProps> = ({ onBack }) => {
                               const { data: stillPaused } = await supabase
                                 .from('subscriptions')
                                 .select('id')
-                                .eq('user_id', user.id)
+                                .eq('user_id', authUserId)
                                 .eq('status', 'paused')
                                 .is('pause_end_date', null);
                               
@@ -323,7 +324,7 @@ export const WalletScreen: React.FC<WalletScreenProps> = ({ onBack }) => {
                   try {
                     await supabase.from('payments').upsert({
                       id: result.paymentId,
-                      user_id: user.id,
+                      user_id: authUserId,
                       amount: amount,
                       razorpay_payment_id: result.paymentId,
                       razorpay_order_id: result.orderId || null,

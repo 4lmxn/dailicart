@@ -643,7 +643,7 @@ export function TodaysDeliveriesScreen() {
           .from('subscriptions')
           .update({
             status: 'paused',
-            pause_start_date: new Date().toISOString().slice(0, 10),
+            pause_start_date: getLocalDateString(),
             pause_end_date: null,
             updated_at: new Date().toISOString(),
           })

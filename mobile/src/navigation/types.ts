@@ -82,4 +82,5 @@ export type RootStackParamList = {
   Admin: undefined;
   Distributor: undefined;
   Onboarding: undefined;
+  DevRoleSelector: undefined;
 };

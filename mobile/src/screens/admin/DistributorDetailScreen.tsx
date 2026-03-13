@@ -131,8 +131,8 @@ export const DistributorDetailScreen: React.FC<AdminScreenProps<'DistributorDeta
     const start = new Date(end.getTime() - 6 * 24 * 60 * 60 * 1000);
     const { data: earnings } = await AdminService.getDistributorEarnings(
       data.id,
-      start.toISOString().slice(0, 10),
-      end.toISOString().slice(0, 10)
+      getLocalDateString(start),
+      getLocalDateString(end)
     );
 
     // Get total deliveries count
